@@ -1,0 +1,196 @@
+labels,ENG,JPN,DEU,NLD
+### pack0,140,2757
+dicpretxt1,Please close the previous,ショートカットのダイアログを,Bitte zuerst das andere,Sluit vorige
+dicpretxt2,shortcut dialogue first.,さきにとじてください。,Verknüpfungs-Fenster schließen.,snelkoppeling venster eerst
+wdgpretxt1,Please close the previous,ウィジェットのダイアログを,Bitte zuerst das andere,Sluit vorige
+wdgpretxt2,widget dialogue first.,さきにとじてください。,Widget-Fenster schließen.,widget venster eerst
+dicfletxt1,Error while reading file.,ファイルのよみこみエラー。,Fehler beim Laden.,Fout bij lezen.
+wdgfletxt2,Wrong widget format or disc error.,ウィジェットのフォーマットまたはディスクエラー。,Widget- oder Datenträger-Problem.,Ongeldig widgetformaat.
+dicfletxt2,Wrong icon format or disc error.,アイコンのフォーマットまたはディスクエラー。,Icon- oder Datenträger-Problem.,Ongeldig pictogramformaat.
+wdgdeltxt1,Are you sure you want to delete,このウィジェットを,Soll dieses Widget wirklich,Wilt u deze
+wdgdeltxt2,this widget?,さくじょしてもよろしいですか?,gelöscht werden?,Widget verwijderen?
+dicdeltxt1,Are you sure you want to delete,さくじょしても,Bitte Löschen bestätigen für:,Het volgende te verwijderen:
+dicmemtxt1,Memory full.,メモリがいっぱいです。,Speicher voll,Geheugen vol
+dicmemtxt2,There is no remaining memory,このリンクをほぞんするための,Die Verknüpfung konnte nicht,Geen vrij- geheugen meer
+dicmemtxt3,available for saving this link.,メモリがたりません。,angelegt werden.,om deze link te bewaren
+wdgmemtxt2,There is no remaining memory,このウィジェットをついかするための,Das Widget konnte nicht,Geen vrij- geheugen meer
+wdgmemtxt3,available for adding this widget.,メモリがたりません。,hinzugefügt werden.,voor de nieuwe widget 
+dicfcttxt1,Folders cannot be cut.,フォルダはカットできません。,Ordner nicht ausschneidbar. Bitte,Map(en) kunnen niet worden geknipt
+dicfcttxt2,"Please use copy and paste,",コピーとペーストをつかって、,"Kopieren und Einfügen, dann",Gebruik knippen en plakken
+dicfcttxt3,and then delete the old folder.,ふるいフォルダをさくじょしてください。,den alten Ordner löschen.,en daarna verwijder de oude folder
+wdgldetxt1,Error while loading and executing,ウィジェットのよみこみとじっこうでエラー。,Fehler beim Ausführen des Widgets.,Fout bij het laden en uitvoeren
+wdgldetxt2,"widget. Disc error, corrupt widget",ディスクエラー、ファイルのはそん,"Datenträgerproblem, Datei defekt","Disk error, widget beschadigd"
+wdgldetxt3,file or memory full.,またはメモリがいっぱいです。,oder Speicher voll.,Geheugen of Bestand vol
+sysbutok,Ok,Ok,Ok,Ok
+sysbutcnc,Cancel,キャンセル,Abbruch,Annuleer
+sysbutapl,Apply,てきよう,Überneh.,Bevestig
+sysbutbck,< Back,< もどる,< Zurück,< Vorige
+sysbutnxt,Next >,つぎへ >,Weiter >,Verder >
+sysbutfin,Finish,かんりょう,Fertig,Voltooien
+sysbutbrw,Browse...,えらぶ...,Wählen...,Bladeren...
+stmemptxt,[empty],[から],[leer],[leeg]
+systxtprp,Properties,プロパティ,Eigenschaften,Eigenschappen
+systitsec,SymbOS security,SymbOSセキュリティ,SymbOS-Sicherheit,SymbOS-beveiliging
+systxtsec1t,Use the Task Manager to close an,おうとうしないアプリケーションをとじるには,Task Manager verwenden um eine nicht,Gebruik taakbeheer voor sluiten
+systxtsec2t,application that is not responsing.,タスクマネージャーをつかってください。,reagierende Anwendung zu schließen.,van niet-reagerende app via Taakbeheer
+systxtsec3t,You are logged on since,ログオンからのけいかじかん,Eingeloggt seit,Aangemeld sinds
+_systxtsec4t,00 hours and ,00時かん ,00 Stunden und ,00 uur en 
+systxtsec5t,00 minutes,00分,00 Minuten,00 minuten
+sysfrmsect,Logon information,ログオンじょうほう,Anmeldeinformationen,Aanmeld info
+sysbutsec1,Lock,ロック,Sperren,Vergrendel
+sysbutsec2,Task Mgr,タスクマネージャー,Task Mgr,Task Mgr
+sysbutsec3,Run...,じっこう...,Ausführen...,Uitvoeren...
+sysbutsec4,Password...,パスワード...,Passwort...,Wachtwoord
+sysbutsec5,Shut down...,シャットダウン...,Beenden...,Afsluiten...
+systitlok,Unlock computer,コンピュータのロックかいじょ,Computer entsperren,Ontgrendel computer
+systxtlok1t,This computer is in use and,このコンピュータはしようちゅうで,Der Computer ist in Benutzung,Deze Computer is in gebruik
+systxtlok2t,has been locked.,ロックされています。,und wurde gesperrt.,en is vergrendeld
+systxtlok3t,User name:,ユーザーめい:,Benutzername:,Gebruiker:
+systxtlok4t,Password:,パスワード:,Passwort:,Wachtwoord:
+prgmsgerrb1,The old password is not,ふるいパスワードが,Altes Passwort falsch. Bitte,Het oude wachtwoord is niet
+prgmsgerrb2,correct. Please enter the valid,ただしくありません。へんこうするには,zum Ändern das korrekte,correct. Geef het juiste
+prgmsgerrb3,password to change it.,ただしいパスワードをにゅうりょくしてください。,eingeben.,wachtwoord.
+systitpwd,Change Password,パスワードへんこう,Passwort ändern,Wijzig wachtwoord
+systxtpwd2t,Old Password:,きゅうパスワード:,Altes Passwort:,Oud wachtwoord:
+systxtpwd3t,New Password:,しんパスワード:,Neues Passwort:,Nieuw wachtwoord:
+systxtpwd4t,Confirm New:,しんパスワード(かくにん):,Neues bestätigen:,Nieuwe bevestigen:
+prgmsgerra1,The entered passwords do not,にゅうりょくされたパスワードが,Eingegebene Passwörter stimmen,Het ingegeven wachtwoord is niet
+prgmsgerra2,match. Please confirm your,いっちしません。パスワードを,nicht überein. Bitte das neue,hetzelfde. Bevestig het
+prgmsgerra3,new password.,かくにんしてください。,bestätigen.,nieuwe wachtwoord.
+wdgnewtit,Create Widget,ウィジェットをつくる,Neues Widget,Nieuwe Widget
+wdgnewtxt1,Type the location and name of,デスクトップについかしたい,Bitte den Dateipfad des Widget,Typ de pad van de widget
+wdgnewtxt2,the widget you want to add to,ウィジェットのばしょとなまえを,"eingeben, das aus dem Desktop",die moet worden toegevoegd
+wdgnewtxt3,"the desktop. Or, search for the",にゅうりょくしてください。または「えらぶ」で,angelegt werden soll. Oder zum,aan de desktop. Of zoek naar
+wdgnewtxt4,widget by clicking Browse.,ウィジェットをさがしてください。,"Suchen auf ""Wählen"" klicken.",de widget door te bladeren
+wdgnewtxt5,Widget path,ウィジェットパス,Widget Pfad,Widgetpad
+wdgnewtxt6,Choose a size for the widget.,ウィジェットのサイズをえらんでください。,Widget-Größe auswählen.,Kies widget formaat.
+wdgnewtxt7,The following size(s) are,つぎのサイズが,Folgende Größen sind,Beschikbare
+wdgnewtxt8,available:,りようできます:,verfügbar:,formaten: 
+folgentxt1,Can't generate folder:,フォルダをつくれません:,Ordner kann nicht angelegt werden,Map maken mislukt
+folrentxt1,Can't rename folder:,フォルダのなまえをかえられません:,Ordner kann nicht umbenannt werden,Map hernoemen mislukt 
+follautxt2,No launcher found,ランチャーがみつかりません,Launcher nicht gefunden,Geen launcher gevonden
+foldistxt2,Disc error,ディスクエラー,Datenträgerfehler,Schijfstoring
+ctxicntxt1,Open,ひらく,Öffnen,Open
+ctxicntxt2,Cut,カット,Ausschneiden,Knippen
+ctxicntxt3,Copy,コピー,Kopieren,Kopiëren
+ctxicntxt4,Create Shortcut,ショートカットをつくる,Verknüpfung erstellen,Nieuwe snelkoppeling
+ctxicntxt5,Delete,さくじょ,Löschen,Verwijderen
+ctxicntxt6,Rename,なまえをかえる,Umbenennen,Hernoemen
+ctxdsktxt1,Arrange Icons,アイコンをならべる,Icons anordnen,Rangschik pictogrammen
+ctxdsktxt2,Line Up Icons,アイコンをせいれつ,Icons ausrichten,Lijn pictogrammen uit
+ctxdsktxt3,Refresh,さいよみこみ,Aktualisieren,Vernieuwen
+ctxdsktxt4,Paste,ペースト,Einfügen,Plakken
+ctxdsktxt5,New,しんき,Neu,Nieuw
+ctxdsktxt7,Shortcut,ショートカット,Verknüpfung,Snelkoppeling
+ctxdsktxt8,8 x 8 grid,8 x 8グリッド,8 x 8 Raster,8x8 raster
+ctxdsktxt9,13 x 11 grid,13 x 11グリッド,13 x 11 Raster,13 x 11 raster
+ctxdsktxta,26 x 22 grid,26 x 22グリッド,26 x 22 Raster,26 x 22 raster
+ctxdsktxtb,48 x 40 grid,48 x 40グリッド,48 x 40 Raster,48 x 40 raster
+ctxdsktxtc,52 x 44 grid,52 x 44グリッド,52 x 44 Raster,52 x 44 raster
+ctxdsktxtd,Auto arrange,じどうせいり,Automatisch anordnen,Automatisch rangschikken 
+ctxdsktxte,Widget,ウィジェット,Widget,Widget
+ctxdsktxtf,Folder,フォルダ,Ordner,Map
+dicnewtit,Create Shortcut,ショートカットをつくる,Verknüpfung erstellen,Snelkoppeling maken
+dicnewtxt1,Type the location and name of,ショートカットをつくりたい,"Bitte den Dateipfad eingeben,",Typ locatie en naam van het
+dicnewtxt2,the item you want to create a,アイテムのばしょとなまえを,auf den eine Verknüfung,item dat moet worden toegevoegd
+dicnewtxt3,"shortcut to. Or, search for the",にゅうりょくしてください。または「えらぶ」で,erstellt werden soll. Oder zum,als snelkoppeling. Of zoek naar
+dicnewtxt4,item by clicking Browse.,アイテムをさがしてください。,"Suchen auf ""Wählen"" klicken.",bestand door te bladeren.
+dicnewtxt5,Command line,コマンドライン,Kommandozeile,Opdrachtregel
+dicnewtxt6,Select a name for the shortcut:,ショートカットのなまえをえらんでください:,Name der Verknüpfung:,Naam voor snelkoppeling
+dicnewtxt7,Select an icon for the shortcut:,ショートカットのアイコンをえらんでください:,Icon für die Verknüpfung:,Pictrogram voor snelkoppeling
+dicnewtxt8,Use file icon,ファイルアイコンをつかう,Aus Datei,Uit bestand halen
+dicnewtxt9,Select icon...,アイコンをえらぶ...,Icon wählen...,Icoon kiezen...
+dicprptxt0,File name,ファイルめい,Dateiname,Bestand
+dicprptxt1,File type,ファイルタイプ,Typ,Type
+dicprptxt2,Open with,ひらく,Öffnen mit,Start met
+dicprptxt3,Location,ばしょ,Ort,Locatie
+dicprptxt4,Size,サイズ,Größe,Grootte
+dicprptxt5,Modified,へんこう日,Geändert,Gewijzigd
+dicprptxta,Read only,よみこみせんよう,Schreibgeschützt,Alleen-lezen
+dicprptxtb,Hidden,かくし,Versteckt,Verborgen
+dicprptxtc,System,システム,System,Systeem
+dicprptxtd,Archive,アーカイブ,Archiviert,Archief
+dicprptxtj,General,ぜんぱん,Allgemeines,Algemeen
+dicprptxtk,Shortcut,ショートカット,Verknüpfung,Snelkoppeling
+dicprptxtl,Target,ターゲット,Ziel,Doel
+dicprptxto,Start in,かいし,Läuft in,Start in
+dicprptxtp,Run,じっこう,Fenster,Uitvoeren
+dicprptxtq,Default,デフォルト,Standard,Standaard
+dicprptxtr,Normal window,ノーマルウィンドウ,Normal,Normaal venster
+dicprptxts,Minimized,さいしょうか,Minimiert,Geminimaliseerd
+dicprptxtt,Maximized,さいだいか,Maximiert,Gemaximaliseerd
+dicprptxtm,Browse target...,ターゲットをえらぶ...,Ziel wählen...,Doel bladeren...
+dicprptxtn,Change icon...,アイコンをかえる...,Icon ändern...,Icoon kiezen...
+dicprptxte,EXE-file,じっこうファイル,Exe,EXE-bestand
+ctxwdgtxt1,Move,いどう,Verschieben,Verplaats
+ctxwdgtxt2,Resize,サイズへんこう,Größe ändern,Formaat
+ctxwdgtxt3,Delete,さくじょ,Löschen,Verwijderen
+stmtoptxt1,Favourites,おきにいり,Favoriten,Favorieten
+stmtoptxt2,Programs,フﾟロクﾞラム,Programme,Programma's
+stmtoptxt3,Documents,トﾞキュメント,Dokumente,Documenten
+stmtoptxt4,Settings,せってい,Einstellungen,Instellingen
+stmtoptxt5,Help,ヘルフﾟ,Hilfe,Help
+stmtoptxt6,Run...,しﾞっこう...,Ausführen...,Uitvoeren...
+stmtoptxt7,Security,セキュリティ,Sicherheit,Beveiliging
+stmtoptxt8,Shut down...,シャットタﾞウン...,Beenden...,Afsluiten...
+stmtoptxta,Control Panel,コントロールパネル,Systemsteuerung,Configuratiescherm
+stmtoptxtb,Display,テﾞィスフﾟレイ,Anzeige,Weergave
+stmtoptxtc,Date and Time,にちしﾞ,Datum & Uhrzeit,Datum en tijd
+stmtoptxtd,Startmenu,スタートメニュー,Startmenü,Startmenu
+stmtoptxte,Load,ロード,Laden,Laden
+stmtoptxtf,Save,セーブ,Speichern,Opslaan
+keytxtinf2,Layouts:,#TRANSLATE#,Layouts:,#TRANSLATE#
+### pack1,53,898
+sysbutok,Ok,Ok,Ok,OK
+sysbutcnc,Cancel,キャンセル,Abbruch,Annuleer
+sysbutsrc,Browse...,えらぶ...,Wählen...,Bladeren...
+sysbutyes,Yes,はい,Ja,Ja
+sysbutno,No,いいえ,Nein,Nee
+systiterr,Error!,エラー!,Fehler!,Fout!
+systitinf,Info,インフォメーション,Info,Info
+systitwrn,Warning,けいこく,Warnung,Waarschuwing
+systitcnf,Confirmation,かくにん,Bestätigung,Bevestiging
+sysbutopn,Open,ひらく,Öffnen,Open
+sysbutsav,Save,ほそﾞん,Speichern,Opslaan
+ticmentx1,Cut,カット,Ausschneiden,Knippen
+ticmentx2,Copy,コピー,Kopieren,Kopiëren
+ticmentx3,Paste,ペースト,Einfügen,Plakken
+ticmentx4,Delete,さくじょ,Löschen,Verwijderen
+ticmentx5,Select All,すべてせんたく,Alles markieren,Selecteer alles
+systitrun,Run,じっこう,Ausführen,Uitvoeren
+systxtrun1t,"Type the path of a program or document,",プログラムやドキュメントのパスを,Bitte den Dateipfad des Programms oder,Type de bestandslocatie van het
+systxtrun2t,and SymbOS will open it for you.,にゅうりょくするとSymbOSがひらいてくれます。,Dokuments eingeben.,programma of document.
+systxtrun3t,Open:,ひらく:,Öffnen:,Open:
+systitoff,Shut Down SymbOS,SymbOSをシャットダウン,SymbOS beenden,SymbOS afsluiten
+systxtoff1t,What do you want the computer,コンピュータに,Vorgang auswählen:,Wat moet de computer doen?
+systxtoff2t,to do?,なにをしてほしいですか。, ,
+sysmsgver2,This application requires a newer,このアプリケーションはあたらしいSymbOSバージョンが,Anwendung benötigt eine neuere,Nieuwere SymbOS versie vereist
+sysmsgver3,SymbOS version. Please upgrade.,ひつようです。アップグレードしてください。,SymbOS Version. Bitte aktualisieren.,Vernieuw uw systeem.
+sysmsgfnd1,File not found:,ファイルがみつかりません:,Datei nicht gefunden:,Bestand niet gevonden:
+sysmsgfnd2,The file or the path don't exist.,そのファイルまたはパスはありません。,Bitte auf korrekten,Pad bestaat niet.
+sysmsgfnd3,Please check your input.,にゅうりょくをたしかめてください。,Pfad überprüfen.,Controleer invoer.
+sysmsgexe1,File is not executable:,じっこうできないファイルです:,Nicht ausführbar:,Niet uitvoerbaar:
+sysmsgexe2,The selected file is not executable,せんたくしたファイルはSymbOSかんきょうで,Datei kann in SymbOS,Het geselecteerde bestand is
+sysmsgexe3,in the SymbOS environment.,じっこうできません。,nicht geöffnet werden.,niet uitvoerbaar in SymbOS.
+sysmsgmem1,Memory full:,メモリがいっぱいです:,Speicher voll:,Geheugen tekort:
+sysmsgmem2,There is not enough memory for,アプリケーションをじっこうするための,Nicht genug Speicher zum,Er is onvoldoende geheugen
+sysmsgmem3,executing the application.,メモリがたりません。,Ausführen der Anwendung.,beschikbaar voor uitvoeren.
+sysmsglod1,Disc error while loading file,ファイルよみこみちゅうにディスクエラー。,Datenträgerfehler beim Laden,Schijfstoring bij laden
+sysmsgdir1,Error while reading directory,ディレクトリよみこみエラー,Fehler beim Ordner-Lesen,Fout bij map lezen
+filseltit1,Select file,ファイルをせんたく,Datei auswählen,Selecteer bestand
+filseltit2,Select folder,フォルダをせんたく,Ordner auswählen,Selecteer map
+filseltxt1,Look in:,さがすばしょ:,Ort:,Zoeken in:
+filseltxt2,File name:,ファイルめい:,Dateiname:,Naam:
+filseltxt3,File type:,ファイルタイプ:,Typ:,Type:
+filseltxt4,Folder:,フォルダ:,Ordner:,Map:
+selopntab3a,Name,なまえ,Name,Naam
+selopntab3b,Size,サイズ,Größe,Grootte
+selopntab3c,Date modified,へんこうび,Geändert,Datum
+selopntab3d,Attr.,アトリ,Attr.,Attr.
+_selopntab3e,-,-,-,-
+dskctltx1,Restore,リストア,Wiederherstellen,Herstel
+dskctltx2,Move,ムーブ,Verschieben,Verplaats 
+dskctltx3,Resize,リサイズ,Größe ändern,Formaat
+dskctltx4,Minimize,ミニマイズ,Minimieren,Minimaliseer
+dskctltx5,Maximize,マキシマイズ,Maximieren,Maximaliseer
+dskctltx7,Close,クローズ,Schließen,Sluiten

@@ -1,0 +1,8 @@
+{
+    "asm": {
+        "0": "App-OSExtend-Texts.asm",
+        "1": "../../../SRC-Main/SymbOS-Data-Texts.asm"
+    },
+    "csv": "App-OSExtend-i18n.csv",
+    "lng": "f:/symbos/symbosxt.lng"
+}

@@ -1,6 +1,6 @@
-nolist
-
 org #1000
+
+nolist
 
 write "f:\symbos\symbosxt.exe"
 READ "..\..\..\SRC-Main\SymbOS-Constants.asm"
@@ -53,13 +53,13 @@ prgtrnadr   dw relocate_count       ;number of relocator table entries  POST add
 prgprztab   dw prgstk-App_BegTrns   ;stack length                       POST table processes
             dw 0                    ;crunched data length
 App_BnkNum  db 0                    ;crunched data type                 POST bank number
-            db "SymbOS Advanced Desktop":ds 32-23:db 0 ;Name
+            db "Extended Desktop":ds 32-16:db 0 ;Name
 prgmemtab   db "SymExe10"           ;SymbOS-EXE-identifier              POST table reserved memory areas
             dw 0                            ;additional code memory
             dw 16384-cfgdatend+cfgdatbeg    ;additional data memory
             dw 0                            ;additional transfer memory
             ds 26                   ;*reserved*
-            db 1,3                  ;requires SymbOS 3.0 or higher
+            db 1,4                  ;requires SymbOS 4.1 or higher
 
 prgicnsml   db 2,8,8,#00,#00,#00,#46,#00,#8C,#00,#46,#23,#8C,#33,#08,#33,#8C,#00,#00
 prgicnbig   db 6,24,24
@@ -72,6 +72,7 @@ use_SySystem_PRGSRV     equ 0   ;Manages shared services or finds applications
 use_SySystem_SYSWRN     equ 1   ;Opens an info, warning or confirm box
 use_SySystem_SELOPN     equ 1   ;Opens the file selection dialogue
 use_SySystem_HLPOPN	equ 0   ;HLP file handling
+use_SySystem_LNGLOD     equ 1   ;Loads a text pack from a language file
 
 ;*** DESKTOP MANAGER LIBRARY USAGE
 use_SyDesktop_WINOPN    equ 1   ;Opens a new window
@@ -93,9 +94,9 @@ use_SyDesktop_WINDIN    equ 1   ;Redraws the content of a window (always)
 use_SyDesktop_WINSLD    equ 0   ;Redraws the two slider of a window
 use_SyDesktop_WINPIN    equ 1   ;Redraws the content of a window (clipped)
 use_SyDesktop_WINSIN    equ 0   ;Redraws the content of a control collection
-use_SyDesktop_MENCTX    equ 0   ;Opens a context menu
-use_SyDesktop_STIADD    equ 0   ;Adds an icon to the systray
-use_SyDesktop_STIREM    equ 0   ;Removes an icon from the systray
+use_SyDesktop_MENCTX    equ 1   ;Opens a context menu
+use_SyDesktop_STIADD    equ 1   ;Adds an icon to the systray
+use_SyDesktop_STIREM    equ 1   ;Removes an icon from the systray
 use_SyDesktop_Service   equ 1   ;[REQUIRED FOR THE FOLLOWING FUNCTIONS]
 use_SyDesktop_MODGET    equ 0   ;Returns the current screen mode
 use_SyDesktop_MODSET    equ 0   ;Sets the current screen 
@@ -106,6 +107,7 @@ use_SyDesktop_DSKCNT    equ 0   ;Continues the Desktop Manager
 use_SyDesktop_DSKPNT    equ 0   ;Fills the screen
 use_SyDesktop_DSKBGR    equ 0   ;Redraws the desktop background
 use_SyDesktop_DSKPLT    equ 0   ;Redraws the complete screen
+use_SyDesktop_DSKALL    equ 1   ;Redraws desktop, re-init system-font
 
 ;*** FILEMANAGER LIBRARY USAGE
 use_SyFile_STOTRN       equ 0   ;Reads or writes a number of sectors
@@ -118,15 +120,15 @@ use_SyFile_FILPOI       equ 1   ;Moves the file pointer to another position
 use_SyFile_FILF2T       equ 0   ;Decodes the file timestamp
 use_SyFile_FILT2F       equ 0   ;Encodes the file timestamp
 use_SyFile_FILLIN       equ 0   ;Reads one text line out of an opened file
-use_SyFile_FILCPR       equ 0   ;Reads compressed data out of an opened file
+use_SyFile_FILCPR       equ 1   ;Reads compressed data out of an opened file
 use_SyFile_DIRDEV       equ 0   ;Sets the current drive
 use_SyFile_DIRPTH       equ 0   ;Sets the current path
 use_SyFile_DIRPRS       equ 0   ;Changes a property of a file or a directory
-use_SyFile_DIRPRR       equ 0   ;Reads a property of a file or a directory
-use_SyFile_DIRREN       equ 0   ;Renames a file or a directory
+use_SyFile_DIRPRR       equ 1   ;Reads a property of a file or a directory
+use_SyFile_DIRREN       equ 1   ;Renames a file or a directory
 use_SyFile_DIRNEW       equ 0   ;Creates a new directory
 use_SyFile_DIRINP       equ 0   ;Reads the content of a directory
-use_SyFile_DIRDEL       equ 0   ;Deletes one or more files
+use_SyFile_DIRDEL       equ 1   ;Deletes one or more files
 use_SyFile_DIRRMD       equ 0   ;Deletes a sub directory
 use_SyFile_DIRMOV       equ 0   ;Moves a file or sub directory
 use_SyFile_DIRINF       equ 0   ;Returns information about one drive

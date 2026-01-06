@@ -2,15 +2,24 @@
 ;@                                                                            @
 ;@               S y m b O S   S y s t e m   E x t e n s i o n                @
 ;@                                                                            @
-;@             (c) 2005-2022 by Prodatron / SymbiosiS (Jörn Mika)             @
+;@             (c) 2005-2025 by Prodatron / SymbiosiS (Jörn Mika)             @
 ;@                                                                            @
 ;@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+;- foldatnam "new","folder"
+;- dictxt0/dictxt1
+;- cfgsmif "Favourites" (-> startmenu editor only??)
+;- keymentxt1_eng  db " Keyboard settings...",0
+;- keytxtinf2_eng  db "Layouts
+;- keytxtinf7_eng  db "00 deadkey(s)",0
+
 
 ;todo
 ;- ausführen -> startparameter anhängen
 ;- letzte documente automatisch hinzufügen
 
 ;bugs
+;- widget file not found -> löschen
 ;- widgets speichern falsch, bei neustart müll
 ;- cpc -> manchmal crash bei startmenu editor (oder war M4 problem??)
 ;- cpc -> manchmal crash nach speichern und neu-boot
@@ -75,6 +84,14 @@
 ;### DICARR -> arrange icons
 ;### DICINH -> Inits icon header
 ;### DICINF -> get file infos
+
+;--- FOLDER ROUTINES ----------------------------------------------------------
+;### FOLPTH -> init folder/launcher path
+;### FOLNAM -> generate folder filename from name
+;### FOLGNM -> copy icon name to group file
+;### FOLGEN -> creates new folder file
+;### FOLNEW -> create new folder
+;### FOLREN -> renames folder file
 
 ;--- LINE UP ROUTINES ---------------------------------------------------------
 ;### LUPCOL -> collision detection
@@ -142,9 +159,29 @@ dicprpw db 0:dw dicprc      ;window id NEW ICON
 dicneww db 0:dw dicnewx     ;window id EDIT ICON
 wdgneww db 0:dw wdgnewx     ;window id NEW WIDGET
 
-prgprz  call syschk
+prgprz  ld e,7
+        ld hl,jmp_sysinf                        ;##!!## AB HIER FALSCHE BANKEN/ADRESSEN bei EP-G9K
+        rst #28                 ;IYL=Databank
+        db #fd:ld a,l
+        push af
+        ld e,8
+        ld hl,jmp_sysinf
+        rst #28
+        pop af
+        push iy:pop hl
+        ld de,32
+        add hl,de               ;hl=pointer to desktop extended vars
+        rst #20:dw jmp_bnkrwd
+        ld l,c
+        ld h,b                  ;hl=desktop extended vars
+        ld (dskvaradr),hl
+
+        call fntini
+        call syschk
         call prgpar
         call cfglod
+        call prglng
+        call cfglng
         call dicarri
 
         ld e,7                  ;*** get username + password
@@ -173,23 +210,7 @@ prgprz  call syschk
         ldir
 
 prgini1 call stmini0                ;*** PLACE EXTENDED STARTMENU
-        ld e,7
-        ld hl,jmp_sysinf                        ;##!!## AB HIER FALSCHE BANKEN/ADRESSEN bei EP-G9K
-        rst #28                 ;IYL=Databank
-        db #fd:ld a,l
-        push af
-        ld e,8
-        ld hl,jmp_sysinf
-        rst #28
-        pop af
-        push iy
-        pop hl
-        ld de,32
-        add hl,de               ;hl=pointer to desktop extended vars
-        rst #20:dw jmp_bnkrwd
-        ld l,c
-        ld h,b                  ;hl=desktop extended vars
-        ld (dskvaradr),hl
+        ld hl,(dskvaradr)
         xor a
         rst #20:dw jmp_bnkrbt   ;read old bank
         dec hl
@@ -218,7 +239,10 @@ prgini2 call dskbgr0                ;*** PLACE EXTENDED DESKTOP
         call stmaut                 ;*** AUTOSTART
         call wdgini                 ;*** LOAD WIDGETS (should be last before message check)
 
-prgprz0 call msgget             ;*** CHECK FOR MESSAGES
+prgprz0 ld hl,cfgsavf
+        bit 0,(hl)
+        jp nz,cfgsav0
+        call msgget             ;*** CHECK FOR MESSAGES
         jr nc,prgprz0
 prgprz5 ld b,a
         ld a,PRC_ID_SYSTEM
@@ -230,6 +254,8 @@ prgprz5 ld b,a
         jr nz,prgprz6
         cp MSR_DSK_EXTDSK       ;* extended desktop command
         jp z,prgprz4
+        cp MSR_DSK_EVTCLK
+        jp z,prgtry
         cp MSR_DSK_WCLICK       ;* window has been clicked?
         jr nz,prgprz0
         ld hl,(App_MsgBuf+1)
@@ -262,30 +288,29 @@ prgprz2 cp DSK_ACT_CONTENT      ;* content clicked
         jr z,prgprz0
         jp (hl)
 prgprz1 ld a,b
-        cp MSR_DSK_EXTDSK
-        jp z,prgprz4
         cp MSR_SYS_SELOPN
         jp z,selopna
-        cp 2
-        jp c,syssec
-        jp z,tsknxt
-        cp 3
-        jp z,tskprv
-        jr prgprz0
 prgprz6 cp MSR_DSK_EXTDSK
-        jr nz,prgprz0
+        jp nz,prgprz0
 
-prgprz4 ld a,(App_MsgBuf+1)     ;* extended desktop/startmenu
+prgprz4 ld a,(App_MsgBuf+13)
+        ld (cplrpl0+2),a
+        ld a,(App_MsgBuf+1)         ;** extended desktop functions
+        ld de,(App_MsgBuf+2)
+        ld hl,(App_MsgBuf+4)
+        ld bc,(App_MsgBuf+6)
+        cp FNC_DXT_DSKBGR
+        jp z,dskbgr
+        ;...FILRUN
+        ;...FILBRW
+        cp FNC_DXT_MENCLK
+        jp z,menclk
+        cp FNC_DXT_DSKCLK
+        jp z,dskclk
         cp FNC_DXT_CFGLOD
         jp z,cfglod0
         cp FNC_DXT_CFGSAV
-        jp z,cfgsav0
-        cp FNC_DXT_MENCLK
-        jp z,menclk
-        cp FNC_DXT_DSKBGR
-        jp z,dskbgr
-        cp FNC_DXT_DSKCLK
-        jp z,dskclk
+        jp z,cfgsav1
         cp FNC_DXT_WDGOKY
         jp z,wdgoky
         cp FNC_DXT_STMDAT
@@ -294,30 +319,51 @@ prgprz4 ld a,(App_MsgBuf+1)     ;* extended desktop/startmenu
         jp z,stmcop
         cp FNC_DXT_STMIIN
         jp z,stmiin
+        cp FNC_DXT_KEYFNC
+        jp z,kfnexe
+        cp FNC_DXT_CPLOPR
+        jp z,cplopr
+        cp FNC_DXT_KEYDED
+        jp z,keyded
+        cp FNC_DXT_KEYFTR
+        jp z,keyftr
+        cp FNC_DXT_LNGLOD
+        jp z,lnglod
         ;...
         jp prgprz0
 
 ;### PRGERR -> Error-Fenster anzeigen
 ;### Input      HL=data
-prgerr  ld (App_MsgBuf+1),hl
-        ld hl,(App_BnkNum)
-        ld h,1
-        ld (App_MsgBuf+3),hl
-        ld a,MSC_SYS_SYSWRN
-        ld (App_MsgBuf),a
-        ld a,(App_PrcID)
-        db #dd:ld l,a
-        db #dd:ld h,PRC_ID_SYSTEM
-        ld iy,App_MsgBuf
-        rst #10
-        ret
+prgwrn  ld b,1+16
+prgwrn1 ld a,(App_BnkNum)
+        jp SySystem_SYSWRN
+prgwrn0 call prgwrn
+        jp prgprz0
+
+;### PRGTRY -> tray icon clicked
+prgtry  ld a,(App_MsgBuf+2)     ;0=left, 1=right, 2=left double click
+        cp 1
+        jr z,prgtrym            ;right -> menu
+prgtry1 call keynxt             ;left  -> next
+        jp prgprz0
+prgtrym ld de,keymendat         ;** open context menu
+        ld a,(App_BnkNum)
+        ld hl,-1
+        call SyDesktop_MENCTX
+        jp c,prgprz0
+        ld a,l:or h
+        jp z,prgprz0
+        jp (hl)
+
+;### PRGINI
+prgini
 
 
 ;==============================================================================
 ;### CONFIG-ROUTINES ##########################################################
 ;==============================================================================
 
-cfgpthfil   db "/symb"
+cfgpthfil   db "\symb"
 cfgpthfil1  db "osxt.ini",0:cfgpthfil0
 
 ;### CFGPTH -> Generates config path
@@ -328,6 +374,8 @@ cfgpth  ld hl,cfgpthfil
         ret
 
 ;### CFGSAV -> save config data
+cfgsavf db 0                        ;flag, if save config after finishing folder-operation
+
 cfgsav  call icnpos
         call cfgpth
         ld hl,(prgparp)
@@ -336,33 +384,32 @@ cfgsav  call icnpos
         xor a
         call SyFile_FILNEW          ;create file
         ret c
-        ld hl,cfgdynbeg
-        ld e,(hl)                   ;startmenu size
-        inc hl
-        ld d,(hl)
-        add hl,de
-        ld b,(hl)                   ;icons size
-        dec hl
-        ld c,(hl)
-        ex de,hl
-        add hl,bc
-        ex de,hl
-        add hl,bc
-        ld c,(hl)                   ;widget size
-        inc hl
-        ld b,(hl)
-        ex de,hl
-        add hl,bc
-        ld c,l:ld b,h               ;bc=sum
-        inc b
+        call memchk0                ;hl=size of dynamic data (menu, icons, widgets)
+        ld (cfgdyntot),hl
+        ld c,l:ld b,h
+        inc b                       ;bc=size with header
+        ld hl,cfgdatflg
+        set 0,(hl)                  ;store and set flag in header
         ld hl,cfgdatbeg
         ld de,(App_BnkNum)
         push af
-        call SyFile_FILOUT          ;save configdata
+        call SyFile_FILOUT          ;save header + dynamic data
+        pop bc
+        ;jr c,...error
+        push bc
+        call fntcfs                 ;save optional font
+        pop bc
+        ;jr c,...error
+        push bc
+        call keycfs                 ;save optional enhanced keyboard configuration
         pop af
         jp SyFile_FILCLO            ;close file
-cfgsav0 call cfgsav
+cfgsav0 ld (hl),0
+cfgsav1 call cfgsav
         jp prgprz0
+cfgsavs ld a,1
+        ld (cfgsavf),a
+        ret
 
 ;### CFGLOD -> load config data
 cfglod  call cfgpth
@@ -372,20 +419,39 @@ cfglod  call cfgpth
         call SyFile_FILOPN          ;open file
         jr c,cfgimp
         ld hl,cfgdatbeg
-        ld bc,dskmemmax
+        ld bc,256
         ld de,(App_BnkNum)
         push af
-        call SyFile_FILINP          ;load configdata
+        call SyFile_FILINP          ;load header
+        pop de
+        ;jr c,...error
+        ld a,(cfgdatflg)
+        rra
+        ld bc,dskmemmax-256
+        jr nc,cfglod1
+        ld bc,(cfgdyntot)
+cfglod1 ld hl,cfgdynbeg
+        ld a,d
+        ld de,(App_BnkNum)
+        push af
+        call SyFile_FILINP          ;load dynamic data
+        pop bc
+        push bc
+        call fntcfl                 ;load font
+        pop bc
+        push bc
+        call keycfl                 ;load keyboard
         pop af
-        jp SyFile_FILCLO            ;close file
+        call SyFile_FILCLO          ;close file
+        jp cfgsmi
 cfglod0 ;call cfglod
         jp prgprz0
 
 ;### CFGIMP -> imports icons and startmenu entries from the classic configuration
-lnkadrmen   equ 0               ;Offset Menunamen (20*20)
-lnkadrpth   equ 0+400           ;Offset Pfade     (28*32; 20 startmenu, 8 icons)
-lnkadricn   equ 0+400+896       ;Offset Iconnamen (8*24)
-lnkadrspr   equ 0+400+896+192   ;Offset Sprites   (8*147)
+lnkadrmen   equ 0                   ;Offset Menunamen (20*20)
+lnkadrpth   equ 0+400               ;Offset Pfade     (28*32; 20 startmenu, 8 icons)
+lnkadricn   equ 0+400+896           ;Offset Iconnamen (8*24)
+lnkadrspr   equ 0+400+896+192       ;Offset Sprites   (8*147)
 lnklenall   equ 0+400+896+192+1176  ;Gesamtlänge der Linkdaten
 
 cfgimpc db 0
@@ -489,7 +555,7 @@ cfgimp1 ld hl,cfgimpc
         inc (hl)
         ld a,(cfgicnnum)
         cp (hl)
-        ret z
+        jp z,cfgsmi
         ld bc,20*32+lnkadrpth
         ld a,32
         call cfgimp0            ;hl=path
@@ -539,6 +605,314 @@ cfgimp2 push de
         pop de
         ret
 
+;### CFGLNG -> translate startmenu with current language
+cfglngt
+dw stmtoptxt2+1,stmtoptxt3+1,stmtoptxt4+1,stmtoptxt5+1,stmtoptxt6+1,stmtoptxt7+1,stmtoptxt8+1
+dw stmtoptxta+1,stmtoptxtb+1,stmtoptxtc+1,stmtoptxtd+1,stmtoptxte+1,stmtoptxtf+1
+
+cfglng  ld iy,stamen0
+        ld ix,stamen01
+        ld hl,(stamen01+6)
+        ld bc,smiprggfx+1
+        or a
+        sbc hl,bc
+        jr z,cfglng7        ;first item is "programs", skip upper part
+        ld hl,cfglngf           ;translate upper part (if containing "favourites")
+        call cfglng1
+cfglng7 ld hl,cfglngt           ;translate main part (2 sections)
+        ld (cfglngm+1),hl
+        ld hl,cfglngm
+        call cfglng1
+        call cfglng2
+
+        push ix:pop iy          ;translate control panel part (3 sections)
+        inc iy              ;iy=stamen1
+        ld bc,5
+        add ix,bc           ;ix=stamen11
+        call cfglng2
+        call cfglng2
+        jr cfglng2
+
+cfglng1 ld (cfglng3+1),hl
+cfglng2 ld a,(ix+0)
+        or a
+        ret z
+        ld a,(ix+1)
+        or a
+        jr z,cfglng4
+cfglng3 call 0                  ;check, if translation, zf=1 yes, de=new name
+        call z,cfglng5
+        call cfglng4        ;ix=next item
+        jr cfglng2
+cfglng4 ld c,(ix+0)         ;jump to next
+        ld b,0
+        add ix,bc
+        ret
+
+cfglng5 ld c,ixl:ld b,ixh   ;*** translation required, de=new name, ix=menuitem
+        ld hl,8
+        ld a,(ix+1)
+        cp 3
+        jr nz,cfglng6
+        inc l
+cfglng6 add hl,bc               ;hl=old name
+        push de
+        push hl
+        push de                 ;compare length
+        call strlen
+        pop hl
+        ld b,c
+        push bc
+        call strlen             ;c=newlen
+        pop af                  ;a=oldlen
+        pop hl                  ;hl=old name
+        pop de                  ;de=new name
+        cp c
+        call nz,cfglng8         ;not same length -> relocate memory
+        ex de,hl
+        jp strcop               ;copy new to old name
+
+cfglng8 push de             ;*** relocate memory, de=new, hl=old, a=oldlen, c=newlen -> move memory
+        push hl
+
+        ld b,a              ;check, if memory available
+        push bc
+        neg
+        add c
+        jr nc,cfglngb
+        push de
+        push hl
+        ld l,a
+        ld h,0
+        call memchk         ;HL=difference -> CF=1 memory full
+        pop hl
+        pop de
+cfglngb pop bc
+        jr c,cfglngc
+        ld a,b
+
+        ld e,l:ld d,h
+        ld b,0
+        add hl,bc           ;hl=dstadr (behind updated name)
+        push hl
+        ld l,a
+        ld h,b
+        add hl,de           ;hl=srcadr (behind old name)
+        ld b,a
+        push bc
+        push hl
+        call memchk0        ;hl=total data length
+        pop de              ;de=srcadr
+        or a
+        sbc hl,de
+        ld bc,cfgdynbeg
+        add hl,bc           ;hl=coplen [=total-(srcadr-datbeg)=total-srcadr+datbeg]
+        pop bc              ;b=oldlen,c=newlen
+        ld a,c
+        sub b               ;a=memdif=new-old
+        ld c,l:ld b,h       ;bc=coplen
+        pop hl              ;hl=dstadr
+        jr nc,cfglng9
+        ex de,hl
+        ldir                ;old>new -> move memory forward
+        jr cfglnga
+cfglng9 add hl,bc
+        dec hl              ;de=dstadr end
+        ex de,hl
+        add hl,bc
+        dec hl              ;hl=srcadr end
+        lddr                ;old<new -> move memory backward
+cfglnga ld c,a
+        add a
+        sbc a
+        ld b,a              ;bc=memdif
+        ld a,(ix+0)
+        add c
+        ld (ix+0),a         ;update item length
+        ld l,(iy+0)
+        ld h,(iy+1)
+        add hl,bc
+        ld (iy+0),l
+        ld (iy+1),h         ;update block length
+        ld hl,(stmdatbeg)
+        add hl,bc
+        ld (stmdatbeg),hl   ;update startmenu length
+cfglngc pop hl
+        pop de
+        ret
+
+cfglngf ld l,(ix+6)
+        ld h,(ix+7)
+        ld bc,smifavgfx+1
+        sbc hl,bc
+        ld de,(stmtoptxt1+1)
+        ret
+cfglngm ld hl,0
+        ld e,(hl):inc hl
+        ld d,(hl):inc hl
+        ld (cfglngm+1),hl
+        ex de,hl
+        ld e,(hl):inc hl
+        ld d,(hl)
+        xor a
+        ret
+
+;### CFGSMI -> adds startmenu icons to top- and controlpanel-menu if not existing, or relocates existing ones
+cfgsmii db 6,128,-1:dw 0:db " "
+cfgsmim dw smifldgfx+1, smiprggfx+1,smidocgfx+1,smicfggfx+1,smihlpgfx+1,smirungfx+1,smisecgfx+1,smioffgfx+1
+cfgsmic dw              smicfggfx+1,smidspgfx+1,smitimgfx+1,smimengfx+1,smilodgfx+1,smisavgfx+1
+cfgsmif db "Favourites",0
+
+cfgsmi  ld a,(stamen01+3)
+        cp 6
+        jr nz,cfgsmig
+
+        ld hl,smibeg            ;** new version -> relocate existing icons
+        ld de,(inficnadr)
+        ld (inficnadr),hl
+        sbc hl,de           ;new-old=dif for old icon adr
+        ret z
+        ld c,l:ld b,h
+        ld d,0
+        ld ix,stamen01      ;relocate    top menu icons
+        call cfgsmih
+        ld e,5
+        add ix,de           ;relocate config menu icons
+cfgsmih ld a,(ix+0)
+        or a
+        ret z
+        ld e,a
+        ld a,(ix+1)
+        or a
+        jr z,cfgsmik
+        cp 3
+        jr c,cfgsmij
+        inc ix
+        dec e
+cfgsmij ld l,(ix+5)
+        ld h,(ix+6)
+        add hl,bc
+        ld (ix+5),l
+        ld (ix+6),h
+cfgsmik add ix,de
+        jr cfgsmih
+
+cfgsmig xor a                   ;** old version -> no existing icons, add menu icons
+        call stmadr
+        ld iyl,7-1
+        ld ix,cfgsmim
+        call cfgsmi1
+
+        ld a,1
+        call stmadr
+        push hl:pop ix      ;***CORRECTION OF WRONG OLD DATA***
+        ld (ix+#1c+0),#02
+        ld (ix+#1c+2),#1A
+        ld iyl,6-1
+        ld ix,cfgsmic-2
+
+cfgsmi1 ld (cfgsmi5+1),hl   ;HL=address of temp pointer to menu data record, DE=length of menu block (excluding length word)
+        inc hl
+        inc hl              ;hl=first item
+        ld de,0             ;de=item counter
+        ld b,e
+cfgsmi2 ld c,(hl)           ;c=length
+        inc c:dec c
+        jr z,cfgsmi4
+        inc hl
+        ld a,(hl)           ;a=type (0=line, 1=item, 2=special, 3=folder)
+        or a
+        jr z,cfgsmi3
+        inc e
+cfgsmi3 dec hl
+        add hl,bc
+        jr cfgsmi2
+cfgsmi4 ld a,e
+        sub iyl
+        ld iyl,a
+        ld l,e:ld h,d
+        add hl,hl
+        add hl,de
+        add hl,hl           ;hl=items*6=additional required memory
+        call memchk         ;DE=new length of stm+icn+wdg, HL=memory left, BC=difference, IX=old total length
+        ret c
+        ld hl,(stmdatbeg)
+        add hl,bc
+        ld (stmdatbeg),hl   ;increase total menu length
+cfgsmi5 ld hl,0
+        push hl
+        dec hl
+        dec hl
+        ld a,(hl)
+        add c
+        ld (hl),a
+        inc hl
+        ld a,(hl)
+        adc b
+        ld (hl),a           ;increase block length
+        ld hl,stmdatbeg-1
+        add hl,de
+        ld e,l:ld d,h       ;de=last byte of new    mem
+        sbc hl,bc           ;hl=last byte of actual mem
+        pop bc
+        inc bc              ;bc=block start-1
+        push hl
+        sbc hl,bc
+        ld c,l:ld b,h       ;bc=length of block to move
+        pop hl
+        lddr                ;move menublock
+        ex de,hl
+        inc hl              ;de=block start
+        inc de              ;hl=start of old data
+cfgsmi6 ld a,(hl)
+        sub 2
+        ret c
+        jr nz,cfgsmi7
+        ldi:ldi             ;line -> copy 2 bytes
+        jr cfgsmi6
+cfgsmi7 ld iyh,a
+        add 8
+        ld (hl),a
+        ldi
+        ld a,(hl)
+        ldi                 ;link/folder -> copy len,type
+        cp 3
+        ld a,iyh
+        ld bc,smiappgfx+1
+        jr nz,cfgsmi8
+        ldi                 ;folder -> copy sub-block id
+        dec a
+        call cfgsmia        ;"Favourites" will use a special icon
+cfgsmi8 ld (cfgsmim+0),bc
+        push hl
+        dec iyl
+        jr nz,cfgsmi9
+        inc iyl
+        inc ix:inc ix
+cfgsmi9 ld l,(ix+0)
+        ld h,(ix+1)
+        ld (cfgsmii+3),hl
+        ld hl,cfgsmii
+        ld bc,6
+        ldir
+        pop hl
+        ld c,a
+        ldir
+        jr cfgsmi6
+
+cfgsmia push af
+        push de
+        push hl
+        ld de,cfgsmif           ;check if name is "Favourites"
+        call strcmp
+        ld bc,smifldgfx+1       ;no -> use folder     icon
+        jr nz,cfgsmid
+        ld bc,smifavgfx+1       ;yes -> use favourites icon
+cfgsmid pop hl
+        pop de
+        pop af
+        ret
+
 ;### PRGPAR -> Startpfad auswerten
 prgparp dw 0    ;start pfad
 prgparf dw 0    ;start filename
@@ -581,7 +955,7 @@ prgpar3 or a
 msgget  db #dd:ld h,-1          ;IYL=sender ID (-1 = receive messages from any sender)
 msgget1 ld a,(App_PrcID)
         db #dd:ld l,a           ;IXL=our own process ID
-        ld iy,App_MsgBuf           ;IY=Messagebuffer
+        ld iy,App_MsgBuf        ;IY=Messagebuffer
         rst #08                 ;get Message -> IXL=Status, IXH=sender ID
         or a
         db #dd:dec l
@@ -843,6 +1217,18 @@ strlen  push af
         pop af
         ret
 
+;### STRCMP -> compares two string (case-sensitive)
+;### Input      HL/DE=Strings (0-terminated)
+;### Output     ZF=0 -> equal, ZF=1 not equal
+;### Destroyed  AF,DE,HL
+strcmp  ld a,(de)
+        cp (hl)
+        ret nz
+        or a
+        ret z
+        inc hl:inc de
+        jr strcmp
+
 ;### STRSKP -> skips text string (behind 0-terminator)
 ;### Input      HL=string
 ;### Output     HL=behind 0 terminator
@@ -862,19 +1248,15 @@ strcop  ld a,(hl)
         ret
 
 ;### SYSCHK -> get computer type and adjust logo, ini-filename
-syschk  ld hl,jmp_sysinf        ;*** get Computer Type
+syschk  ld hl,jmp_sysinf        ;*** get Computer Type and hardware config
         ld de,256*1+5
-        ld ix,cfgcpctyp
-        ld iy,245-163 ;66+2+6+8
+        ld ix,cfghrdflg
+        ld iy,240-163 ;66+2+6+8
         rst #28
-        ld a,(cfgcpctyp)
-        ld b,a
-        and #1f
-        cp 7
-        ret nc
-        bit 7,b
+        ld a,(cfghrdflg)
+        bit 3,a
         ret z
-        ld hl,256*"9"+"G"       ;cpc/ep with msx encoding -> g9k version
+        ld hl,256*"9"+"G"       ;g9k version
         ld (cfgpthfil1),hl
         ret
 
@@ -950,31 +1332,34 @@ selopn0 jp z,0
 
 ;### MEMCHK -> checks, if enough memory available
 ;### Input      HL=difference
-;### Output     CF=0 ok, DE=new length of stm+icn+wdg, HL=memory left, BC=difference
+;### Output     CF=0 ok, DE=new total length (stm+icn+wdg), HL=memory left, BC=difference
 ;###            CF=1 memory full
 ;### Destroyed  AF
 memchk  push hl
-        xor a
-        call icnadr
-        dec hl
-        ld d,(hl)
-        dec hl
-        ld e,(hl)
-        push de
-        call wdgadr
-        dec hl
-        ld d,(hl)
-        dec hl
-        ld e,(hl)
-        ld hl,(cfgdynbeg)
-        add hl,de
-        pop de
-        add hl,de
+        call memchk0
         pop bc
         add hl,bc
-        ex de,hl
+        ex de,hl            ;de=total new length
         ld hl,dskmemmax
-        sbc hl,de
+        sbc hl,de           ;hl=total left
+        ret
+memchk0 ld hl,cfgdynbeg
+        ld e,(hl)
+        inc hl
+        ld d,(hl)                   ;de=size startmenu
+        add hl,de
+        ld b,(hl)
+        dec hl
+        ld c,(hl)                   ;bc=size icons
+        ex de,hl
+        add hl,bc
+        ex de,hl                    ;de=startmenu+icons
+        add hl,bc
+        ld c,(hl)
+        inc hl
+        ld b,(hl)                   ;bc=size widgets
+        ex de,hl
+        add hl,bc                   ;hl=startmenu+icons+widgets=total dynamic data size
         ret
 
 ;### BNKDST -> get our bank as destination
@@ -988,7 +1373,7 @@ bnkdst  ld a,(App_BnkNum)
 ;### EXTENDED STARTMENU #######################################################
 ;==============================================================================
 
-menclk  ld hl,(App_MsgBuf+2)
+menclk  ex de,hl
         ld a,h
         cp 4
         jr nc,menclk1
@@ -1008,18 +1393,28 @@ menclk0 ld a,(App_BnkNum)       ;##!!## pfad neu zusammensetzen (workdir, winmod
 
 dskvaradr   dw 0    ;desktop extended vars (desktop -> symdskbeg)
 
-symextbnm   equ 0   ;db bnkndt       ;(extended) bank
-symextsma   equ 1   ;dw dsksta       ;(extended) startmenu address
-symextsmy   equ 3   ;dw -66          ;(extended) startmenu -ylength
-symextnum   equ 5   ;db dskbgranz    ;(extended) number of background controls
-symextadr   equ 6   ;dw dskbgrobj    ;(extended) address of the background control data
-symextwin1  equ 8   ;db -1           ;(extended) background window ID
-symextpgm   equ 9   ;dw prggrpmem    ;(extended) program group memory
-symextwgm   equ 11  ;dw wingrpmem    ;(extended) window group memory
-symextwix   equ 13  ;dw wingrpanz    ;(extended) window number and index list
+symextbnm   equ 0   ;db bnkndt           ;(extended) bank
+symextsma   equ 1   ;dw dsksta           ;(extended) startmenu address
+symextsmy   equ 3   ;dw -66              ;(extended) startmenu -ylength
+symextnum   equ 5   ;db dskbgranz        ;(extended) number of background controls
+symextadr   equ 6   ;dw dskbgrobj        ;(extended) address of the background control data
+symextwin1  equ 8   ;db -1               ;(extended) background window ID
+symextpgm   equ 9   ;dw prggrpmem        ;(extended) program group memory
+symextwgm   equ 11  ;dw wingrpmem        ;(extended) window group memory
+symextwix   equ 13  ;dw wingrpanz        ;(extended) window number and index list
+symextmem   equ 15  ;dw memmap           ;(extended) address of memory map
+symextmop   equ 17  ;db memops_d,memops_t,memops_o   ;data, transfer length, transfer offset
+symextbfl   equ 20  ;dw 1                ;(extended) bank availability flags (reverse order, 1=available)
+symextfna   equ 22  ;dw dskfnt           ;(extended) system font address (with header; for txtfnt)
+symextfno   equ 24  ;dw dskfnt+dskfntofs ;(extended) system font address (without header/system chars; for sysinf/control panel)
+symextfnt   equ 26  ;db platform_chr255  ;(extended) system font type (0=96+6, 1=255)
+symextfnb   equ 27  ;db 0                ;(extended) system font bank (0=no extended 255 big font)
+symextlng   equ 28  ;dw symlngtxt        ;(extended) international texts
+symextkmf   equ 30  ;db 0                ;(extended) keymap flags (+1=keymap active, +2=keymaps switchable, +4=deadkeys)
+symextkm1   equ 31  ;dw 0                ;(extended) keymap normal
+symextkm2   equ 33  ;dw 0                ;(extended) keymap alt gr
 
-dskclk  ld hl,(App_MsgBuf+2)       ;H=action type (left/right/middle/doubleclick mouse key or keyboard)
-        ld a,l
+dskclk  ld a,e                     ;D=action type (left/right/middle/doubleclick mouse key or keyboard)
         cp DSK_ACT_CONTENT
         jp nz,prgprz0
         ld bc,(App_MsgBuf+8)       ;B=type (0=background, 128=icon [C=icon ID], 1-127=widget [B=process ID, C=local control ID])
@@ -1029,7 +1424,7 @@ dskclk  ld hl,(App_MsgBuf+2)       ;H=action type (left/right/middle/doubleclick
         cp 128
         jp z,dskclk1
         jp nc,prgprz0
-        ld a,h                  ;*** Widget
+        ld a,d                  ;*** Widget
         cp DSK_SUB_MRCLICK
         jr z,dskclka
         ld a,MSC_WDG_CLICK          ;no rightclick -> send event to widget
@@ -1095,11 +1490,10 @@ dskclkd ld c,(hl)
         call clcn32
         pop hl
         ret
-dskclk8 ld a,h                  ;*** Background
+dskclk8 ld a,d                  ;*** Background
         cp DSK_SUB_MRCLICK
         jp nz,prgprz0               ;only react on right mouseclick
-        ld hl,(App_MsgBuf+4)        ;store current mouse position for new/paste
-        ld (dicnewm+0),hl
+        ld (dicnewm+0),hl           ;store current mouse position for new/paste
         ld hl,(App_MsgBuf+6)
         ld (dicnewm+2),hl
         rst #20:dw #8154            ;check, if icon in clipboard
@@ -1119,7 +1513,7 @@ dskclk9 call msgmen
         jp (hl)
 
 dskclkt dw 0
-dskclk1 ld a,h                  ;*** Icons
+dskclk1 ld a,d                  ;*** Icons
         cp DSK_SUB_MLCLICK
         jr nz,dskclk4
         push bc
@@ -1222,6 +1616,7 @@ dskbgr0 ld hl,(dskvaradr)           ;** reinitialize background
 ;==============================================================================
 
 ;### DICDEL -> icon delete
+;### Input      A=icon ID
 dicdel  ld hl,dicprpw
         inc (hl)
         dec (hl)
@@ -1257,23 +1652,42 @@ dicdel2 ex de,hl
         ld (hl),"?"
         inc hl
         ld (hl),0
-        ld a,(App_BnkNum)
         ld hl,dicdelobj
         ld b,4*8+2
         ld de,0
-        call SySystem_SYSWRN
+        call prgwrn1
         pop bc
         cp 3
         jp nz,prgprz0
         rst #30
         ld a,b
+        push af
+        call dicfol
+        jr nz,diccut1
+        inc hl                  ;icon is folder -> delete groupfile
+        ld de,(foldatfps)
+        ld bc,8
+        ldir
+        ld hl,folnamext
+        ld c,5
+        ldir
+        ld hl,dicnewbuf1
+        ld ix,(App_BnkNum-1)
+        call SyFile_DIRDEL
+        call cfgsavs
         jr diccut1
 
 ;### DICCUT -> Cuts desktop icon
 diccut  push af
+        call dicfol
+        pop bc
+        ld hl,dicfctobj
+        jp z,prgwrn0
+        ld a,b
+        push af
         call icncop
-        pop af
-diccut1 push af
+diccut1 pop af
+        push af
         call icnpos
         pop af
         call icnadr
@@ -1299,6 +1713,7 @@ diccop  call icncop
         jp prgprz0
 
 ;### DICREN -> Renames desktop icon
+;### Input      A=icon ID
 dicrenw db 0
 dicrenb ds 14
 dicren  push af
@@ -1364,36 +1779,77 @@ dicren3 push ix
         pop iy
         pop ix
         jp prgprz5
+
 dicren4 ld a,0
         call icnadr
         ld bc,2+4
         add hl,bc
         ex de,hl
-        ld hl,dicrentxt1b
+        ld hl,dicrentxt1b       ;copy new name into icon data
         ld bc,24
         ldir
+        ex de,hl
+        call dicfol0            ;check, if icon is a folder
+        jr nz,dicren5
+        inc hl
+        call folren             ;dicnewbuf1=full path, dicrentxt1b=new name, hl=old filename in icon data
 dicren5 ld a,(dicrenw)
         jp SyDesktop_WINCLS
+
 dicren2 dec (hl)
-        jr z,dicren1
+        jp z,dicren1
 dicreno call dicren4            ;ok
         jp prgprz0
 dicrenc call dicren5            ;cancel
         jp prgprz0
 
-;### DICNEW -> New shortcut
+;### DICFOL -> check, if icon is a folder
+;### Input      A=icon ID
+;### Output     ZF=1 icon is folder (HL+1=groupfile in full path)
+dicfol  call icnadr
+        ld bc,2+4+24
+        add hl,bc
+dicfol0 bit 3,(hl)              ;skip bitmap
+        ld bc,6*24+3
+        jr z,dicfol1
+        ld bc,12*24+10
+dicfol1 add hl,bc
+        push hl
+        call folpth
+        pop hl
+        ld de,dicnewbuf1        ;compare icon path with launcher path
+dicfol2 ld a,(de)
+        or a
+        ret z
+        call clcucs
+        ld c,a
+        ld a,(hl)
+        call clcucs
+        inc hl
+        inc de
+        cp c
+        jr z,dicfol2
+        ret
+
+;### DICPOS -> corrects mouse position for new icon
+;### Input      (dicnewm+0)=mouse position
+;### Output     (dicnewm+4)=icon position
+dicpos  ld hl,(dicnewm+0)
+        ld de,-12
+        add hl,de
+        ld (dicnewm+4),hl
+        ld hl,(dicnewm+2)
+        ld (dicnewm+6),hl
+        ret
+
+;### DICNEW -> New shortcut dialogue
 dicnewm dw 0,0          ;mouse position
         dw 0,0
 dicnew  ld hl,dicneww           ;only 1 dialogue at the same time
         inc (hl)
         dec (hl)
         jp nz,dicprpz
-        ld hl,(dicnewm+0)
-        ld de,-12
-        add hl,de
-        ld (dicnewm+4),hl
-        ld hl,(dicnewm+2)
-        ld (dicnewm+6),hl
+        call dicpos
         ld hl,icndummy          ;reset/set to default
         ld de,dicnewicn
         ld bc,147
@@ -1435,7 +1891,7 @@ dicnew6 ld hl,filselbuf+4
         ld hl,dicnewbuf1
         ld de,dicnewicn
         call icnfil
-        call dicinhb
+        call dicinha
         ld a,(dicneww)
         ld e,10
         call SyDesktop_WINDIN
@@ -1455,7 +1911,7 @@ dicnew7 ld hl,filselbuf+4
 dicnewf ld hl,dicnewbuf1        ;use file icon
         ld de,dicnewicn
         call icnfil
-dicnew8 call dicinhb
+dicnew8 call dicinha
         ld a,(dicneww)
         ld e,7
         call SyDesktop_WINDIN
@@ -1520,7 +1976,7 @@ dicnewl ld hl,dicnewgrp3
 dicnew4 ld hl,dicnewgrp2        ;zu Tab2 zurückspringen
 dicnew0 ld (dicnewwin0),hl
         ld a,(dicneww)
-        ld e,-1
+dicnewj ld e,-1
         ld hl,41
         ld bc,0
         ld ix,1000
@@ -1528,20 +1984,28 @@ dicnew0 ld (dicnewwin0),hl
         call SyDesktop_WINPIN
         jp prgprz0
 
-dicnew5 call icnpos             ;finished
-        ld hl,(dicnewinp1+8)
+dicnew5 call dicmak             ;finished
+        call c,dicpry3
+        jp dicnewx
+
+;### DICMAK -> creates a new icon
+;### Input      (dicnewm+4)=position, dicnewbuf2=name, dicnewicn=bitmap, dicnewbuf1=path
+;### Output     CF=0 ok, CF=1 memory full
+dicmak  call icnpos
+        ld hl,dicnewbuf1
+        call strlen             ;bc=path length
         ld a,(dicnewicn)
         bit 3,a
-        ld de,147+2+4+24+3
-        ld bc,147
-        jr z,dicnewj
-        ld de,298+2+4+24+3
-        ld bc,298
-dicnewj add hl,de               ;hl=icon length
-        push bc
-        call icnnew
+        ld hl,147+2+4+24+3
+        ld de,147
+        jr z,dicmak1
+        ld hl,298+2+4+24+3
+        ld de,298
+dicmak1 add hl,bc               ;hl=icon length
+        push de
+        call icnnew             ;HL=icon size -> CF=0 ok, HL=address for new icon, (icnnumval)++, icnini not called
         pop bc
-        jr c,dicnewk
+        ret c
         push bc
         inc hl
         inc hl
@@ -1552,10 +2016,10 @@ dicnewj add hl,de               ;hl=icon length
         ld hl,dicnewbuf2        ;names
         ld c,24
         ldir
-        ld hl,dicnewicn
+        ld hl,dicnewicn         ;bitmap
         pop bc
         ldir
-        ld hl,dicnewbuf1
+        ld hl,dicnewbuf1        ;path
         call strcop
         ld (de),a
         inc de
@@ -1564,8 +2028,8 @@ dicnewj add hl,de               ;hl=icon length
         ld (de),a
         ld a,(dicarraut)
         or a
-        jr nz,dicnewn
-        ld a,(icnnumval)        ;no auto arrange
+        jr nz,dicmak2
+        ld a,(icnnumval)        ;** no auto arrange
         dec a
         push af
         xor a
@@ -1573,15 +2037,15 @@ dicnewj add hl,de               ;hl=icon length
         pop af
         call dicpry5
         call wdgini0        ;re-inits all widgets
-        jp dicnewx
-dicnewn xor a
+        or a
+        ret
+dicmak2 xor a                   ;** auto arrange
         call wdgdel2        ;disable all widgets
         call icnini
         call wdgini0        ;re-inits all widgets
-        call dicnewy
-        jp diclup
-dicnewk call dicpry3
-        jp dicnewx
+        call lupall
+        or a
+        ret
 
 ;### DICPRP -> Show and edit icon properties
 dicprpi db 0            ;icon id
@@ -1591,10 +2055,7 @@ dicprp  ld e,a
         or a
         jr z,dicprp1
 dicprpz ld hl,dicpreobj
-dicprpy ld a,(App_BnkNum)
-        ld b,1+16
-        call SySystem_SYSWRN
-        jp prgprz0
+        jp prgwrn0
 dicprp1 ld a,e
         ld (dicprpi),a
         call icnadr
@@ -1610,7 +2071,7 @@ dicprp1 ld a,e
 dicprp2 ld de,dicprpicn
         ldir
         push hl
-        call dicinha
+        call dicinhb
         pop hl
         ld a,(hl)
         cp "%"
@@ -1664,7 +2125,7 @@ dicprp0 ld hl,dicprpbuf1
         ld bc,13
         ldir
         ld hl,dicinfe
-        ld de,dicprptxte
+        ld de,(dicprptxte+1)
         ld bc,3
         ldir
         ld de,dicprpbuf1            ;*** location
@@ -1808,10 +2269,8 @@ dicpry5 push af
 dicpry6 ld e,a
         ld a,(symextwin)
         jp SyDesktop_WINDIN
-dicpry3 ld a,(App_BnkNum)
-        ld hl,dicmemobj
-        ld b,1+16
-        jp SySystem_SYSWRN
+dicpry3 ld hl,dicmemobj
+        jp prgwrn
 
 dicpbt  ld hl,dicprpbuf1            ;*** browse target
         ld de,filselbuf+4
@@ -1847,7 +2306,7 @@ dicpbi1 ld hl,filselbuf+4
         ld de,dicprpicn
         call icnlod
         jp c,prgprz0
-dicpbi2 call dicinha
+dicpbi2 call dicinhb
         ld a,(dicprpw)
         ld e,5
         call SyDesktop_WINDIN
@@ -1875,23 +2334,23 @@ dicshc  call icnadr
         jr dicpst0
 
 ;### DICPST -> Paste icon
-dicpst  rst #20:dw #8154
+dicpst  rst #20:dw #8154        ;check, if icon in clipboard
         ld a,d
         cp CLPTYP_ICON
         jp nz,prgprz0
-        push iy
+        push iy                 ;iy=len
         call icnpos
         pop hl
-        push hl
-        call icnnew
-        pop iy
-        jr c,dicpst1
-        push hl:pop ix
+        push hl                 ;hl=len
+        call icnnew             ;hl=adr new icon
+        pop iy                  ;iy=len
+        jr c,dicpst1            ;memory full
+        push hl:pop ix          ;ix=adr new icon
         ld de,(App_BnkNum)
         ld d,CLPTYP_ICON
         push hl
         rst #20:dw #8151
-        pop ix
+        pop ix                  ;ix=adr new icon
         ld hl,(dicnewm+0)
         ld de,-12
         add hl,de
@@ -1900,6 +2359,12 @@ dicpst  rst #20:dw #8154
         ld hl,(dicnewm+2)
         ld (ix+4),l
         ld (ix+5),h
+        ld a,(icnnumval)
+        dec a
+        push af
+        call dicfol             ;ZF=1 icon is folder (HL+1=groupfile in full path)
+        pop bc                  ;B=icon ID
+        call z,folpst
 dicpst0 ld a,(dicarraut)
         or a
         jr nz,dicpst2
@@ -2076,7 +2541,7 @@ dicinfd ld de,0
         ret
 
 ;### DICINH -> inits icon header
-dicinhb ld hl,dicnewicn
+dicinha ld hl,dicnewicn         ;new icon
         bit 3,(hl)
         ld a,8
         jr z,dicinh2
@@ -2084,7 +2549,8 @@ dicinhb ld hl,dicnewicn
 dicinh2 ld (dicnewdat3a+2),a
         ret z
         jr dicinh0
-dicinha ld hl,dicprpicn
+
+dicinhb ld hl,dicprpicn         ;existing icon
         bit 3,(hl)
         ld a,8
         jr z,dicinh1
@@ -2092,6 +2558,7 @@ dicinha ld hl,dicprpicn
 dicinh1 ld (dicprpdat1a+2),a
         ld (dicprpdat2a+2),a
         ret z
+
 dicinh0 inc hl:inc hl:inc hl
         ld e,l:ld d,h
         ld bc,7
@@ -2108,6 +2575,342 @@ dicinh0 inc hl:inc hl:inc hl
         ld (hl),e
         inc hl
         ld (hl),d
+        ret
+
+
+;==============================================================================
+;### FOLDER ROUTINES ##########################################################
+;==============================================================================
+
+foldatexe   db "\folders\":foldatexe1
+            db "launcher.exe",0:foldatexe0
+foldatpps   dw 0    ;adr first char behind "launcher.exe"
+foldatfps   dw 0    ;adr first char of "launcher.exe"
+foldatnam   db "New":ds 12-3
+            db "Folder":ds 12-6
+foldatgrp   ds 8+1
+foldatnew   ds 12+1
+
+;### FOLPTH -> init folder/launcher path
+folpth  ld hl,(prgparf)
+        ld de,(prgparp)
+        or a
+        sbc hl,de
+        ld c,l:ld b,h
+        ex de,hl
+        ld de,dicnewbuf1
+        ldir
+        ld hl,foldatexe
+        ld bc,foldatexe0-foldatexe
+        ldir
+        dec de
+        ld (foldatpps),de
+        ld hl,foldatexe1-foldatexe0+1
+        add hl,de
+        ld (foldatfps),hl
+        ret
+
+;### FOLNAM -> generate folder filename from name
+;### Input      HL=icon name (2x12)
+;### Output     CF=0 -> (foldatgrp)=folder name (8 chars), dicnewbuf1=full group filepath
+;###            CF=1 -> disc error or too many folders with similiar names
+folnamcnt   db 0    ;counter for existing files
+folnamext   db ".grp",0
+
+folnam  ld (folnam4+1),hl
+        ld de,foldatgrp     ;destination
+        ld bc,256*2+8       ;b=name counter, c=char counter
+folnam1 ld a,(hl)
+        inc hl
+        or a
+        jr z,folnam4        ;next name part
+        call clcucs
+        cp "0"
+        jr c,folnam1        ;not valid
+        cp "Z"+1
+        jr nc,folnam1       ;not valid
+        cp "9"+1
+        jr c,folnam2
+        cp "A"
+        jr c,folnam1        ;not valid
+folnam2 ld (de),a           ;** valid, copy, c-=1
+        inc de
+        dec c
+        jr nz,folnam1
+        jr folnam7          ;full 8 chars reached
+folnam4 ld hl,0             ;next name part
+        dec b
+        jr z,folnam5        ;** both name parts parsed
+        push de
+        ld de,12
+        add hl,de
+        pop de
+        jr folnam1
+folnam5 ld a,"_"
+        inc c
+folnam6 dec c               ;pad filename with "_" to keep 8 chars always
+        jr z,folnam7
+        ld (de),a
+        inc de
+        jr folnam6
+folnam7 xor a
+        ld (folnamcnt),a
+folnam8 ld hl,(foldatfps)   ;create full group filepath
+        push hl
+        ex de,hl
+        ld hl,foldatgrp
+        call strcop
+        dec de
+        ld hl,folnamext     ;add extension
+        call strcop
+        ld hl,dicnewbuf1
+        ld ix,(App_BnkNum-1)
+        xor a
+        call SyFile_DIRPRR  ;check, if existing
+        pop hl
+        jr nc,folnam3       ;-> yes, try next
+        cp 013  ;stoerrxfi
+        scf
+        ret nz              ;error!=file not found -> disc error
+        xor a
+        ret
+folnam3 ld a,(folnamcnt)
+        inc a
+        scf
+        ret z               ;error too many double files (255)
+        ld (folnamcnt),a
+        call clcdez
+folnam9 ld (foldatgrp+6),hl
+        jr folnam8
+
+;### FOLGNM -> copy icon name to group file
+;### Input      HL=icon name (2x12)
+;### Output     folgendatn=group name (24)
+;### Destroyed  AF,BC,DE
+folgnm  push hl
+        ld hl,folgendatn
+        push hl
+        ld de,folgendatn+1
+        ld bc,24-1
+        ld (hl),0
+        ldir
+        pop de
+        pop hl
+        push hl
+        call strcop
+        ld l,e:ld h,d
+        dec hl
+        ld (hl)," "
+        pop hl
+        push hl
+        ld bc,12
+        add hl,bc
+        call strcop
+        pop hl
+        ret
+
+;### FOLGEN -> creates new folder file
+;### Input      HL=icon name (2x12)
+;### Output     CF=0 -> foldatgrp=folder name (1-8 chars), 
+;###            CF=1 -> error while creating file or too many folders with similiar names
+
+;2w = form x (60)
+;2w = form y (50)
+;2w = form w (150)
+;2w = form h (110)
+;2w = offset of title string in the heap, after the 13-byte header (0)
+;2w = heap size in bytes (24)
+;1b = number of icons (0)
+;??b = heap data (11+1+11+1)
+
+folgendat   dw 60,50,150,110
+            dw 0,11+1+11+1
+            db 0
+folgendatn  ds 11+1+11+1
+folgendat0
+
+folgen  call folgnm         ;copy name to group file
+        call folnam
+        ret c
+        ld hl,dicnewbuf1
+        ld ix,(App_BnkNum-1)
+        xor a
+        call SyFile_FILNEW  ;create group file
+        ret c               ;error while creating file
+        ld hl,folgendat
+        ld bc,folgendat0-folgendat
+        ld de,(App_BnkNum)
+        push af
+        call SyFile_FILOUT
+        pop bc
+        push af
+        call cfgsavs
+        ld a,b
+        call SyFile_FILCLO
+        pop af
+        ret
+
+;### FOLNEW -> create new folder
+folnew  ld hl,dicneww       ;not allowed, when new icon dialogue open
+        inc (hl)
+        dec (hl)
+        jp nz,dicprpz
+        call folpth         ;init path
+        call dicpos         ;set icon position
+        ld hl,(foldatpps)
+        ld (hl),0
+        ld hl,dicnewbuf1
+        ld de,dicnewicn
+        call icnfil         ;HL=filepath, DE=icondata -> load launcher icon
+        ld hl,folglaobj
+        jp c,prgwrn0        ;error, no launcher found
+        call dicinha
+        ld hl,foldatnam
+        ld de,dicnewbuf2
+        ld bc,24
+        ldir                ;copy name
+        ld hl,foldatnam
+        call folgen         ;generate group file
+        ld hl,folgdiobj
+        jp c,prgwrn0
+        call folpth         ;init path again
+        ld hl,(foldatpps)
+        ld (hl)," "
+        inc hl
+        ex de,hl
+        ld hl,foldatgrp
+        call strcop
+        call dicmak
+        jr nc,folnew1
+        call dicpry3
+        jp prgprz0
+folnew1 ld a,(icnnumval)
+        dec a
+        jp dicren
+
+;### FOLREN -> renames folder file
+;### Input      dicnewbuf1=full launcher path, dicrentxt1b=new icon name, hl=old filename in icon data
+;### Output     CF=1 -> disc error
+folren  push hl
+        ld hl,dicrentxt1b
+        call folnam         ;HL=icon name (2x12) -> CF=0 (foldatgrp)=folder name (8 chars), dicnewbuf1=full group filepath
+        jp c,folren1
+        ld hl,(foldatfps)
+        ld de,foldatnew
+        ld bc,13
+        push hl
+        ldir                ;copy from full path to new filename
+        pop de
+        pop hl              ;hl=old filename
+        push hl
+        ld c,8              ;modify full path with old filename
+        ldir
+        ld hl,dicnewbuf1
+        ld de,foldatnew
+        ld ix,(App_BnkNum-1)
+        call SyFile_DIRREN
+        pop de              ;de=old filename in icon data
+        jr c,folren2
+        call cfgsavs
+        ld hl,foldatgrp     ;update with new filename
+        ld bc,8
+        ldir
+        ld hl,foldatnew     ;modify full path with new filename
+        ld de,(foldatfps)
+        ld c,8
+        ldir
+        ld hl,dicnewbuf1
+        ld ix,(App_BnkNum-1)
+        call SyFile_FILOPN
+        jr c,folren2
+        ld ix,13
+        ld iy,0
+        ld c,0
+        push af
+        call SyFile_FILPOI  ;move pointer to title string
+        jr c,folren3
+        ld hl,dicrentxt1b
+        call folgnm
+        ld hl,folgendatn
+        ld de,(App_BnkNum)
+        ld bc,24
+        pop af
+        push af
+        call SyFile_FILOUT  ;write new name
+        jr c,folren3
+        pop af
+        jp SyFile_FILCLO
+
+folren3 pop af
+        call SyFile_FILCLO
+        jr folren2
+folren1 pop hl
+folren2 ld hl,folrdiobj
+        call prgwrn
+        scf
+        ret
+
+;### FOLPST -> duplicates folder file
+;### Input      B=icon ID, HL+1=groupfile in source icon record
+;### Output     CF=1 -> disc error
+folpsts db 0    ;src handler
+folpstd db 0    ;dst handler
+
+folpst  push hl                 ;IX=icon record, HL+1=groupfile in icon record
+        ld a,b
+        call icnadr
+        ld de,6
+        add hl,de
+        call folnam             ;(foldatgrp)=new groupfile name (8 chars), dicnewbuf1=new full groupfile path, (foldatfps)=position of groupfile in path
+        jr c,folpst6
+        ld hl,dicnewbuf1
+        ld ix,(App_BnkNum-1)
+        push ix
+        call SyFile_FILNEW      ;overwrite new groupfile
+        pop ix
+        pop de
+        ret c
+        ld (folpstd),a
+        inc de                  ;de=old groupfile in icon record
+        ld hl,(foldatfps)       ;hl=new groupfile in path
+        ld b,8
+folpst1 ld a,(de)               ;copy new in icon record, old in path
+        ldi
+        dec hl
+        ld (hl),a
+        inc hl
+        djnz folpst1
+        ld hl,dicnewbuf1
+        call SyFile_FILOPN      ;open old groupfile
+        jr c,folpst5
+        ld (folpsts),a
+folpst2 ld hl,tmpbuf
+        ld a,(App_BnkNum)
+        ld e,a
+        ld a,(folpsts)
+        ld bc,512
+        push de
+        push hl
+        call SyFile_FILINP      ;read from source
+        pop hl
+        pop de
+        jr c,folpst3
+        ld a,c
+        or b
+        jr z,folpst3
+        ld a,(folpstd)
+        call SyFile_FILOUT      ;write to destination
+        jr nc,folpst2
+folpst3 push af
+        ld a,(folpsts)
+        call SyFile_FILCLO
+folpst4 ld a,(folpstd)
+        call SyFile_FILCLO
+        pop af
+        ret
+folpst5 push af
+        jr folpst4
+folpst6 pop hl
         ret
 
 
@@ -2356,7 +3159,7 @@ tskswtidx   ds wingrpmax    ;index table
 
 tskswtpgm   dw 0            ;program group memory
 tskswtwgm   dw 0            ;window group memory
-tskswtonm   db 0            ;original numbers (including non taskbar)
+tskswtonm   db 0            ;original count (including non taskbar)
 tskswtoix   ds wingrpmax    ;original index table
 tskswtinf   ds 4*wingrpmax  ;window data (1b bnk, 1w titadr, 1b status)
 
@@ -2574,8 +3377,18 @@ tsktit  ld a,(tskswtsel)
         inc hl
         ld d,(hl)
         ex de,hl
+        push af
+        and #0f
+        rst #20:dw jmp_bnkrbt       ;check, if linked text
+        dec hl
+        dec b
+        jr nz,tsktit1
+        inc hl
+        rst #20:dw jmp_bnkrwd       ;get linked address
+        ld l,c:ld h,b
+tsktit1 pop af
         ld de,tsktittxt
-        ld c,31
+        ld bc,31
         rst #20:dw jmp_bnkcop
         ret
 
@@ -2658,9 +3471,14 @@ tskswt2 call tskswt3            ;cancel
         jp prgprz0
 tskswt3 ld a,(tskswtwid)
         jp SyDesktop_WINCLS
-tskswt4 ld a,(App_MsgBuf)
+tskswt4 ld hl,(App_MsgBuf)
+        ld bc,256*FNC_DXT_KEYFNC+MSR_DSK_EXTDSK
+        or a
+        sbc hl,bc
+        jr nz,tskswt1
+        ld a,(App_MsgBuf+2)
         ld hl,tskswtnum
-        cp 3
+        cp 135
         jr nz,tskswt9
         ld a,(tskswtsel)
         sub 1
@@ -2668,7 +3486,7 @@ tskswt4 ld a,(App_MsgBuf)
         ld a,(hl)
         dec a
         jr tskswt7
-tskswt9 cp 2
+tskswt9 cp 129
         jr nz,tskswt1
         ld a,(tskswtsel)
         inc a
@@ -2716,7 +3534,10 @@ tskswt8 call SyDesktop_WINTOP   ;window was open -> set to top
 
 ;### SYSSEC -> Dialog für System-Sicherheit öffnen
 syssecf db 0        ;flag, if security window is open
-syssec  ld a,1
+syssec  ld a,(App_MsgBuf+12)
+        or a
+        jp nz,prgprz0
+        ld a,1
         ld (syssecf),a
         ld hl,jmp_mtgcnt        ;*** CPU-Last Infos holen
         rst #28                 ;IY,IX=Systemzähler, DE=Leerlaufprozess-Counter
@@ -2728,10 +3549,16 @@ syssec  ld a,1
         call clcd32         ;IY,BC=Stunden, HL=Minuten
         ld a,l
         call clcdez
-        ld (systxtsec5t),hl
+        ex de,hl
+        ld hl,(systxtsec5t+1)
+        ld (hl),e:inc hl
+        ld (hl),d
         ld a,c
         call clcdez
-        ld (systxtsec4t),hl
+        ex de,hl
+        ld hl,(systxtsec4t+1)
+        ld (hl),e:inc hl
+        ld (hl),d
         ld bc,DSK_SRV_DSKSTP*256+2
         ld hl,syswinsec
         jp sysopn
@@ -2825,7 +3652,8 @@ paswinb ld hl,syspwdw           ;*** Passwort -> Cancel
         call sysclo0
         call paswin4
         jp prgprz0
-paswin2 call prgerr
+paswin2 ld b,1
+        call prgwrn
         call paswin4
         ld e,7                  ;Control aktualisieren
         call paswin3
@@ -2912,7 +3740,7 @@ stmrecsiz   dw 0    ;size of the startmenu data record (<=stmrecmax)
 stmadr  ld hl,cfgdynbeg
         inc hl
         inc hl
-stmadr0 ld e,(hl)
+stmadr0 ld e,(hl)       ;de=length of this block
         inc hl
         ld d,(hl)
         inc hl
@@ -2979,11 +3807,12 @@ stmini1 push af
 stmini2 ld a,(hl)
         or a
         jp z,stmini8        ;end of block
+        ld (stminig+1),hl   ;store length byte address
         inc hl
         ld a,(hl)
         inc hl
         cp 1
-        jr c,stmini7
+        jp c,stmini7
         jr z,stmini5
         cp 3
         jr c,stmini6
@@ -3011,6 +3840,25 @@ stminie pop hl
 stmini4 ld (iy+6),0
         ld (iy+7),0
         ld (iy+1),0
+
+        push hl
+        ld l,(iy+2)
+        ld h,(iy+3)
+        ld a,(App_BnkNum)
+        rst #20:dw jmp_bnkrbt   ;read first menu text char
+        ld a,b
+        cp 6
+        jr nz,stminig
+        set 4,(iy+0)
+stminig ld bc,0                 ;correct item length (if corrupt)
+        pop hl
+        push hl
+        or a
+        sbc hl,bc
+        ld a,l
+        ld (bc),a
+        pop hl
+
         ld bc,8
         add iy,bc
         inc e
@@ -3042,7 +3890,7 @@ stmini6 ld (iy+0),1             ;*** Special Link
 stmini7 ld (iy+0),1+8           ;*** Line
         ld (iy+2),0
         ld (iy+3),0
-        jr stmini4
+        jp stmini4
 stmini8 pop hl              ;block finished
         inc e:dec e
         jr nz,stminif
@@ -3064,6 +3912,7 @@ stmini9 pop bc              ;menus finished -> store address pointers
 stminia ld c,(iy+0)
         inc iy:inc iy
 stminib ld a,(iy+0)
+        and #f
         cp 5
         jr nz,stminic
         ld a,(iy+4)
@@ -3085,6 +3934,7 @@ stminic ld de,8
         ret
 
 ;### STMDAT -> [remote] sends startmenu address/bank to process
+;### Input      IXH=ID of requesting process
 ;### Output     (p2)=address, (p4)=bank
 stmdat  ld hl,(stmrecsiz)
         ld (App_MsgBuf+6),hl
@@ -3095,10 +3945,7 @@ stmdat  ld hl,(stmrecsiz)
         jp prgprz0
 
 ;### STMCOP -> [remote] moves memory area
-stmcop  ld de,(App_MsgBuf+2)
-        ld hl,(App_MsgBuf+4)
-        ld bc,(App_MsgBuf+6)
-        ld a,(App_MsgBuf+8)
+stmcop  ld a,(App_MsgBuf+8)
         or a
         jr z,stmcop1
         ldir
@@ -3373,6 +4220,7 @@ icnnew  ld a,(icnnumval)
 
 ;### ICNFIL -> gets icon from file
 ;### Input      HL=filepath, DE=icondata
+;### Output     CF=1 -> unknown file/error while loading icon
 ;### Destroyed  AF,BC,DE,HL,IX,IY
 icnfila     dw 0        ;icondataadr
 icnfilh04   db 6,24,24
@@ -3385,11 +4233,10 @@ icnfil  push hl
         cp 1
         jr z,icnfil3            ;* EXE
         jr nc,icnfil1
-        ld hl,icndummy          ;* unknown
+icnfil0 ld hl,icndummy          ;* unknown
         ld de,(icnfila)
         ld bc,144+3
         ldir
-        or a
         ret
 icnfil1 ld a,(hl)               ;* linked
         cp "%"
@@ -3419,7 +4266,7 @@ icnfil3 ld l,c:ld h,b           ;* load icon from EXE
         ld a,(App_BnkNum)
         db #dd:ld h,a
         call SyFile_FILOPN
-        ret c
+        jr c,icnfil0
         ld (icnlodhnd),a
         ld hl,tmpbuf
         ld de,(App_BnkNum)
@@ -3440,20 +4287,24 @@ icnfil6 ld hl,tmpbuf+109        ;* load 4colour icon
         ld bc,3
 icnfil7 ld de,(icnfila)
         ldir
-icnfil4 ld a,(icnlodhnd)
-        jp SyFile_FILCLO
+icnfil4 push af
+        ld a,(icnlodhnd)
+        call SyFile_FILCLO
+        pop af
+        jp c,icnfil0
+        ret
 icnfil5                         ;* load 16colour icon
         ld hl,(tmpbuf+41)       ;hl=ofs
         ld a,(tmpbuf+40)        ;a=crunched flags
         ld de,#100              ;de=filofs
         ld bc,(tmpbuf+00)
         dec b
-        call icnfild
+        call icncpr
         ld bc,(tmpbuf+02)       ;icon is never in code area
-        call icnfild
+        call icncpr
         jr c,icnfil8            ;icon in data area
         ld bc,(tmpbuf+04)
-        call icnfild            ;icon in trns area
+        call icncpr             ;icon in trns area
 
 icnfil8 push hl:pop ix
         ld iy,0
@@ -3466,23 +4317,21 @@ icnfil8 push hl:pop ix
         ld de,(App_BnkNum)
         ld bc,288+10
         call SyFile_FILINP
+        jr c,icnfil4
         ld hl,icnfilh16
         ld bc,10
         jr icnfil7
 
-icnfile pop hl:pop hl:pop hl:pop hl
-        pop hl
-        jr icnfil4
-
+;### ICNCPR -> check, if inside area or skip compressed/uncompressed area
 ;### Input      DE=file offset, BC=uncompressed area size, A=compressed flag (bit7=current), HL=current offset
 ;### Output     CF=1 -> offset HL in this area, use it
 ;###            CF=0 -> DE=next file offset, HL=new corrected icon offset, A=next compressed flag
-icnfild push hl
+icncpr  push hl
         or a
         sbc hl,de           ;ofs always >= fileofs
         sbc hl,bc           ;ofs within current area?
         pop hl
-        jr nc,icnfil9       ;no, get next
+        jr nc,icncpr1       ;no, get next
         rla                 ;is this crunched?
         ccf
         ret c               ;no -> finished, here we are
@@ -3491,13 +4340,17 @@ icnfild push hl
         scf
         ret
 
-icnfil9 rla                 ;ofs in next area -> crunched?
-        jr c,icnfilf
+icncpre pop hl:pop hl:pop hl:pop hl
+        pop hl
+        jr icnfil4
+
+icncpr1 rla                 ;ofs in next area -> crunched?
+        jr c,icncpr2
         ex de,hl
         add hl,bc           ;no -> just increase file offset, next try
         ex de,hl
         ret
-icnfilf push af             ;yes -> correct icon offset by crunch difference
+icncpr2 push af             ;yes -> correct icon offset by crunch difference
         push de             ;filofs
         push bc             ;orglen
         push hl             ;curofs
@@ -3506,14 +4359,14 @@ icnfilf push af             ;yes -> correct icon offset by crunch difference
         ld c,0
         ld a,(icnlodhnd)
         call SyFile_FILPOI
-        jr c,icnfile
+        jr c,icncpre
         ld a,(icnlodhnd)
-        ld hl,icnfilg+1
+        ld hl,icncpr3+1
         ld de,(App_BnkNum)
         ld bc,2
         call SyFile_FILINP
-        jr c,icnfile
-icnfilg ld bc,0             ;bc=crnlen
+        jr c,icncpre
+icncpr3 ld bc,0             ;bc=crnlen
         inc bc:inc bc
         pop hl              ;hl=curofs
         add hl,bc
@@ -3585,10 +4438,8 @@ icnlod2 push af
         call SyFile_FILCLO
         pop af
         ret nc
-        ld a,(App_BnkNum)
         ld hl,dicfleobj
-        ld b,1+16
-        call SySystem_SYSWRN
+        call prgwrn
         scf
         ret
 
@@ -3778,7 +4629,7 @@ wdgnewd ds 2+32     ;temporary widget data
 wdgnew  ld a,(wdgneww)          ;only 1 dialogue at the same time
         or a
         ld hl,wdgpreobj
-        jp nz,dicprpy
+        jp nz,prgwrn0
         xor a
         ld (wdgnewbuf1),a
         ld ix,wdgnewinp1
@@ -3828,7 +4679,7 @@ wdgnew1 ld a,(wdgnewinp1+8)     ;zu Tab2 vorspringen
         db #dd:ld h,a
         call SyFile_FILOPN
         ld hl,wdgfleobj
-        jp c,dicprpy
+        jp c,prgwrn0
         ld hl,tmpbuf
         ld bc,256+8+6+32
         ld de,(App_BnkNum)
@@ -3850,14 +4701,14 @@ wdgnew7 ld hl,(tmpbuf+256+0)
         or a
         sbc hl,bc
         ld hl,wdgfleobj
-        jp nz,dicprpy
+        jp nz,prgwrn0
         ex de,hl
         ld hl,(tmpbuf+256+2)
         ld bc,"1"*256+"G"
         or a
         sbc hl,bc
         ex de,hl
-        jp nz,dicprpy
+        jp nz,prgwrn0
         ld hl,tmpbuf+256+4
         ld de,wdgnewd
         ld bc,2+32
@@ -3881,13 +4732,7 @@ wdgnew4 add hl,de
 wdgnew2 ld hl,wdgnewgrp1        ;zu Tab1 zurückspringen
 wdgnew0 ld (wdgnewwin0),hl
         ld a,(wdgneww)
-        ld e,-1
-        ld hl,41
-        ld bc,0
-        ld ix,1000
-        ld iy,1000
-        call SyDesktop_WINPIN
-        jp prgprz0
+        jp dicnewj
 
 wdgnews ld a,(App_MsgBuf+3)     ;sizelist doubleclick -> finished
         cp DSK_SUB_MDCLICK
@@ -3895,7 +4740,7 @@ wdgnews ld a,(App_MsgBuf+3)     ;sizelist doubleclick -> finished
 wdgnew5 ld a,(wdgnumval)        ;finished
         cp wdgnummax
         ld hl,wdgmemobj
-        jp z,dicprpy            ;too many widgets -> error
+        jp z,prgwrn0            ;too many widgets -> error
         push hl
         push af
         call wdgdis             ;disable control for new widget
@@ -3913,7 +4758,7 @@ wdgnew5 ld a,(wdgnumval)        ;finished
         call memchk
         pop bc
         pop hl
-        jp c,dicprpy            ;memory full -> error
+        jp c,prgwrn0            ;memory full -> error
         ld a,b
         call wdgadr
         push hl
@@ -3958,7 +4803,7 @@ wdgnew5 ld a,(wdgnumval)        ;finished
         call wdgsiz             ;send size command to widget
         jp wdgnewx
 wdgnew6 ld hl,wdgfleobj
-        jp dicprpy
+        jp prgwrn0
 
 ;### WDGMOV -> moves a widget
 wdgmov  ld a,(wdgcurid)
@@ -4013,11 +4858,10 @@ wdgmov2 ld de,0
         jp prgprz0
 
 ;### WDGDEL -> deletes a widget
-wdgdel  ld a,(App_BnkNum)
+wdgdel  ld b,4*8+2
         ld hl,wdgdelobj
-        ld b,4*8+2
         ld de,0
-        call SySystem_SYSWRN
+        call prgwrn1
         cp 3
         jp nz,prgprz0
         rst #30
@@ -4143,6 +4987,1172 @@ wdgrsz  ld a,(wdgcurid)
 
 
 ;==============================================================================
+;### CONTROL PANEL COMMUNICATION ##############################################
+;==============================================================================
+
+;### CPLOPR -> execute control panel operations
+;### Input      IXH=sender process (control panel or application for language services)
+;###            E=type [1=font preview, 2=font load, 3=font remove, 4=language setting, 5=build kex-info, 6=kex-preview, 7=load kex], D=data bank/flags, HL=data address/data
+;### Redirects  D,HL
+cplopr  ld a,ixh
+        ld (cplrpl0+2),a
+        dec e
+        jp z,fntprv
+        dec e
+        jp z,fntlod
+        dec e
+        jp z,fntrem
+        dec e
+        jp z,lngset
+        dec e
+        jp z,keyinf
+        dec e
+        jp z,keyprv
+        dec e
+        jp z,keylod
+        jp prgprz0
+
+;### CPLRPL -> replys to control panel/appication and returns to main loop
+;### Input      A=status (for fonts  -> 0=error, 1-7=preview/load/remove/lngset/keyinf/keyprv/keylod successfully;
+;###                      for lnglod -> [0=no extended desktop, already done by system manager], 1=ok, 2-x=error)
+cplrpl  ld (App_MsgBuf+1),a
+        ld a,(App_PrcID)
+cplrpl2 ld ixl,a
+cplrpl0 ld ixh,0                ;receiver ID, set by cplopr
+        ld a,MSR_SYS_EXTFNC
+cplrpl3 ld (App_MsgBuf+0),a
+        ld iy,App_MsgBuf
+        rst #10                 ;send message to control panel
+        jp prgprz0
+cplrpl1 ld (App_MsgBuf+1),a
+        ld a,PRC_ID_SYSTEM
+        jr cplrpl2
+
+
+;==============================================================================
+;### FONT ROUTINES ############################################################
+;==============================================================================
+
+fntcnv  ds 16*16+1  ;converter buffer; #used by font and language routines#
+
+;### FNTINI -> init font handling
+fntini  call fntini0
+        rst #20:dw jmp_bnkrwd       ;store internal fontadr with header
+        ld (fntrem1+1),bc
+        rst #20:dw jmp_bnkrwd       ;store internal fontadr without header/system chars
+        ld (fntrem2+1),bc
+        ret
+fntini0 ld hl,(dskvaradr)
+        ld bc,symextfna
+        add hl,bc
+        xor a
+        ret
+
+;### FNTACT -> activate enhance font
+fntact  call fntini0
+        ld bc,(5*0+prgmemtab+1)
+        push bc
+        rst #20:dw jmp_bnkwwd       ;set external fontadr with header
+        pop bc
+        inc bc:inc bc               ;set external fontadr without header
+        ld de,(5*0+prgmemtab+0-1)
+        ld e,1
+fntact1 rst #20:dw jmp_bnkwwd
+        ld c,e:ld b,d
+        rst #20:dw jmp_bnkwwd
+        ret
+
+;### FNTCFL -> check, if enhanced font is existing, load it and set OS font (called by cfglod)
+;### Input      B=file handle
+fntcfl  ld a,(cfgdatflg)
+        bit 1,a
+        ret z
+        push bc
+        call fntmem
+        pop bc
+        jr nc,fntcfl2
+fntcfl1 ld hl,cfgdatflg
+        res 1,(hl)
+        ret
+fntcfl2 ld a,(5*0+prgmemtab+0)
+        ld e,a
+        ld a,b
+        ld hl,(5*0+prgmemtab+1)
+        inc h:inc h
+        ld bc,255*11
+        call SyFile_FILINP
+        jr c,fntcfl1
+        call fntact
+        rst #30
+        jp SyDesktop_DSKALL
+
+;### FNTCFS -> save enhanced font in config, if existing (called by cfgsav)
+;### Input      B=file handle
+fntcfs  ld a,(cfgdatflg)
+        bit 1,a
+        ret z
+        ld a,b
+        ld de,(5*0+prgmemtab+0)
+        ld hl,(5*0+prgmemtab+1)
+        inc h:inc h
+        ld bc,255*11
+        jp SyFile_FILOUT
+
+;### FNTMEM -> reserves and registers memory for enhanced font
+;### Output     CF=0 -> (5*0+prgmemtab+0/1/3) prepared
+;###            CF=1 -> memory full
+fntmems
+db 8,8,#00,#02,#06,#0c,#58,#70,#20,#00,0 ;  029 *** Checker     (menu checked)
+db 8,8,#00,#ff,#60,#78,#7e,#78,#60,#00,0 ;  030 *** Arrow Right (menu sub, tree closed)
+db 8,8,#00,#7e,#7e,#3c,#3c,#18,#18,#00,0 ;  031 *** Arrow Down  (tree opened)
+
+fntmem  ld bc,255*11+510+2
+        xor a
+        ld e,1
+        push bc
+        rst #20:dw jmp_memget
+        pop bc
+        ret c
+        ld (5*0+prgmemtab+0),a      ;register reserved memory
+        ld (5*0+prgmemtab+1),hl
+        ld (5*0+prgmemtab+3),bc
+        push hl
+        ld hl,cfgdatflg
+        set 1,(hl)
+        ld hl,#0303                     ;** prepare chars
+        ld (fntcnv),hl
+        ld hl,fntcnv+2
+        ld bc,8
+        ld (hl),b
+        ld de,fntcnv+3
+        ldir
+        ld hl,fntcnv
+        ld bc,17*11-11
+        ldir
+        pop hl:push hl
+        inc h:inc h                 ;hl+=255*2+2
+        ld ixl,15
+        ld bc,17*11
+fntmem5 push hl
+        push bc
+        call fntmem4
+        pop bc
+        pop hl
+        add hl,bc
+        dec ixl
+        jr nz,fntmem5
+        ld hl,fntmems                   ;** set system chars
+        ld de,fntcnv
+        ld bc,3*11
+        push bc
+        ldir
+        pop bc
+        pop hl:push hl
+        ld de,29*11-11+512
+        add hl,de
+        call fntmem4
+        ld hl,256*1+128+64+8            ;** prepare header, offsets
+        ld (fntcnv),hl              ;255 chars, big font, 8pixel height, starts at char 1
+        ld de,255*2-1               ;de=offset
+        ld ixl,127
+        ld hl,fntcnv+2
+        call fntmem1                ;offsets for first 127 chars
+        pop hl:push hl
+        call fntmem3                ;copy to enhanced big font
+        ld ixl,128
+        ld hl,fntcnv
+        call fntmem1                ;offsets for next 127 chars
+        pop hl
+        inc h
+fntmem3 push de                     ;copy to enhanced font
+        ld bc,256
+        call fntmem4
+        pop de
+        ret
+fntmem4 ex de,hl                    ;copy BC bytes from fntcnv to HL
+        ld a,(5*0+prgmemtab+0)
+        add a:add a:add a:add a
+        ld hl,App_BnkNum
+        add (hl)
+        ld hl,fntcnv
+        rst #20:dw jmp_bnkcop
+        ret
+fntmem1 ld bc,11-2
+fntmem2 ld (hl),e:inc hl
+        ld (hl),d:inc hl
+        ex de,hl
+        add hl,bc
+        ex de,hl
+        dec ixl
+        jr nz,fntmem2
+        ret
+
+;### FNTPRV -> copy enhanced big font to control panel preview font, send CP confirmation
+;### Input      HL=font address behind header, D=font bank
+fntprv  ld a,d
+        add a:add a:add a:add a     ;aHi=prv bank
+        ex de,hl                    ;de =prv adr
+        ld hl,App_BnkNum
+        add (hl)                    ;aLo=app bank
+        ld (fntprv3+1),a
+        ld a,(hl)
+        add a:add a:add a:add a     ;aHi=app bank
+        ld hl,5*0+prgmemtab+0
+        add (hl)                    ;aLo=fnt bank
+        ld (fntprv1+1),a
+        ld hl,(5*0+prgmemtab+1)
+        ld bc,31*11+512
+        add hl,bc
+        ld b,6
+fntprv1 ld a,0
+        push bc
+        ld bc,11*16
+        push bc
+        push hl
+        push de
+        ld de,fntcnv
+        push de
+        rst #20:dw jmp_bnkcop       ;copy 16 big chars from enhanced font to converter buffer
+        pop de
+        push de
+        ld l,e:ld h,d
+        ld a,16                     ;convert 16 chars from big to small
+fntprv2 ldi                         ;total length
+        inc hl                      ;skip column length
+        ld bc,8                     ;copy 8 lines
+        ldir
+        inc hl                      ;skip next column length (=0)
+        dec a
+        jr nz,fntprv2
+        pop hl
+        pop de
+fntprv3 ld a,0
+        ld bc,9*16
+        push de
+        push bc
+        rst #20:dw jmp_bnkcop       ;copy converted chars to preview font
+        pop bc
+        pop hl
+        add hl,bc
+        ex de,hl
+        pop hl
+        pop bc
+        add hl,bc
+        pop bc
+        djnz fntprv1
+        ld a,1
+        jp cplrpl
+
+;### FNTERR -> error while loading font, release memory optional and send CP message
+fnterr2 pop hl
+        pop hl
+fnterr1 ld a,(fntlodhnd)
+        call SyFile_FILCLO
+fnterr0 ld a,(fntlodbrk)
+        or a
+        call nz,fntrem0
+fnterr3 xor a
+        jp cplrpl
+
+;### FNTLOD -> load enhanced font from file and activate it, send CP confirmation
+;### Input      HL=filepath address, D=filepath bank
+fntlodhnd   db 0
+fntlodhed   ds 2
+fntlodbrk   db 0        ;1=on error release memory
+
+fntlod  xor a
+        ld (fntlodbrk),a
+        ld a,(5*0+prgmemtab+0)
+        or a
+        jr nz,fntlod1
+        push hl
+        push de
+        call fntmem
+        pop de
+        pop hl
+        ld a,0
+        jp c,cplrpl
+        inc a                       ;there was no font loaded before -> remove enhanced font/memory, if loading fails
+        ld (fntlodbrk),a
+fntlod1 ld ixh,d                    ;open fontfile
+        call SyFile_FILOPN
+        jr c,fnterr0
+        ld (fntlodhnd),a
+        ld de,(App_BnkNum)          ;load header
+        ld hl,fntlodhed
+        ld bc,2
+        call SyFile_FILINP
+        jr c,fnterr1
+        ld hl,fntlodhed+0
+        xor a
+        bit 7,(hl)
+        jr z,fntlodc
+        inc hl
+        ld a,(hl)
+        ld (hl),1
+        dec hl
+fntlodc ld (fntlodd+1),a
+        ld a,(hl)
+        bit 5,a
+        ld hl,16*16
+        ld de,1+fntcnv              ;+1 as first char would be overwriten by double width byte
+        ld a,7
+        jr z,fntlod2
+        ld hl,9*16
+        ld de,16*7+fntcnv
+        xor a
+fntlod2 ld (fntlod4+1),de           ;where to load
+        ld (fntlod5+1),hl           ;size of 16 chars chunk
+        ld (fntlod8+1),a            ;skip charlines
+        add 9
+        ld (fntlod6+1),a            ;loaded amount divisor
+        ld a,(fntlodhed+1)
+        ld b,a
+        dec a
+        ld de,11
+        call clcm16
+        ld de,(5*0+prgmemtab+1)
+        add hl,de
+        inc h:inc h                 ;hl+=255*2+2=destination big font address
+        xor a
+        sub b
+        ld b,a                      ;b=256-first char=max number of chars to be loaded
+fntlod3 push hl
+        push bc                         ;** loading loop
+        ld de,(App_BnkNum)
+fntlod4 ld hl,0                     ;hl=convert destination (medium=fntcnv, small=fntcnv+16*7)
+fntlod5 ld bc,0                     ;bc=size of 16 chars
+        push hl
+        ld a,(fntlodhnd)
+        call SyFile_FILINP
+        pop hl
+        jp c,fnterr2
+        push hl
+fntlod6 ld de,0
+        call clcd16                 ;l=loaded characters
+        pop de
+        pop bc
+        ld c,l
+        inc c:dec c
+        jr z,fntloda                ;nothing loaded -> finished
+        push bc                     ;b=remaining chars, c=loaded chars
+        ld ixl,16
+        ex de,hl
+        ld de,fntcnv
+fntlod7 ld a,(hl)                       ;** char loop
+        ldi
+        ld (de),a
+        inc de
+        ld bc,8
+        ldir
+        xor a
+        ld (de),a
+        inc de
+fntlod8 ld bc,0
+        add hl,bc
+        dec ixl
+        jr nz,fntlod7
+        pop de                      ;d=remaining chars, e=loaded chars
+        pop bc                      ;bc=destination
+        push de
+        push bc
+        ld a,e
+        cp d
+        jr c,fntlod9
+        ld a,d
+fntlod9 ld de,11
+        call clcm16
+        ld e,c:ld d,b               ;de=dest
+        ld c,l:ld b,h               ;bc=size
+        ld a,(5*0+prgmemtab+0)
+        add a:add a:add a:add a
+        ld hl,App_BnkNum
+        add (hl)
+        ld hl,fntcnv
+        rst #20:dw jmp_bnkcop
+        pop hl
+        ld bc,16*11
+        add hl,bc
+        pop af
+        sub 16
+        jr z,fntlodb
+        ld b,a
+        jr nc,fntlod3
+        jr fntlodb
+fntloda pop hl
+fntlodb ld a,(fntlodhnd)
+        call SyFile_FILCLO
+        call fntact
+fntlodd ld a,0
+        ld (App_MsgBuf+2),a
+        ld a,2
+        jp cplrpl
+
+;### FNTREM -> remove enhanced font, if existing, send CP confirmation
+fntrem  call fntrem0
+        ld a,3
+        jp cplrpl                   ;reply and return
+fntrem0 ld a,(5*0+prgmemtab+0)
+        or a
+        ret z                       ;no enhance font -> finished
+        ld hl,(5*0+prgmemtab+1)
+        ld bc,(5*0+prgmemtab+3)
+        rst #20:dw jmp_memfre       ;free memory
+        xor a                       ;unregister
+        ld (5*0+prgmemtab+0),a
+        ld hl,cfgdatflg
+        res 1,(hl)
+        call fntini0                ;set internal system font
+fntrem1 ld bc,0                     ;address of internal system font (with header)
+        rst #20:dw jmp_bnkwwd
+fntrem2 ld bc,0                     ;address of internal system font (without header/system chars)
+        ld de,0
+        jp fntact1                  ;activate internal system font
+
+
+;==============================================================================
+;### KEYFUNCTION ROUTINES #####################################################
+;==============================================================================
+
+;### KFNEXE -> executes keyboard input
+;### Input      E=char
+kfnexe  ld a,e
+        cp 128
+        jp z,syssec         ;SymbOS security
+        cp 129
+        jp z,tsknxt         ;switch to next window
+        cp 135
+        jp z,tskprv         ;switch to previous window
+        cp 203
+        jp z,prgtry1        ;switch to next keyboard layout
+        ;...
+        jp prgprz0
+
+
+;==============================================================================
+;### KEYMAPPING ROUTINES ######################################################
+;==============================================================================
+
+keylaysiz   equ 40
+keymapsiz   equ 100
+
+keydatmp1   ds keymapsiz    ;normal/shift
+keydatmp2   ds keymapsiz    ;altgr/shift+altgr
+keydatlyp   db 0            ;layout position [0-(cfgkeylyc-1)]
+keydatbnc   db 0            ;source/destination bank for BNKCOP
+keydatsti   db -1           ;-1 or systray ID
+
+;### KEYMEM -> releases or reserves and registers memory for enhanced keymaps and deadkey/romaji trees
+;### Input      (cfgkeyflg),(cfgkeysiz)
+;### Output     CF=1 -> memory full
+;###            CF=0 -> ZF=1 -> no enhanced keymapping
+;###                    ZF=0 -> (5*1+prgmemtab+0/1/3) updated, BC=length, HL=keydatbnc
+keymem  ld a,(5*1+prgmemtab+0)
+        or a
+        jr z,keymem1
+        ld hl,(5*1+prgmemtab+1)     ;free old keymap memory
+        ld bc,(5*1+prgmemtab+3)
+        rst #20:dw jmp_memfre
+        xor a
+        ld (5*1+prgmemtab+0),a
+keymem1 ld a,(cfgkeyflg)
+        or a
+        ret z                       ;no enhanced keymapping
+        ld bc,(cfgkeysiz)
+        xor a
+        ld e,a
+        push bc
+        rst #20:dw jmp_memget
+        pop bc
+        jr c,keymem4
+        ld (5*1+prgmemtab+0),a      ;register reserved memory
+        ld (5*1+prgmemtab+1),hl
+        ld (5*1+prgmemtab+3),bc
+        ld a,(App_BnkNum)
+        add a:add a:add a:add a
+        ld hl,5*1+prgmemtab+0
+        add (hl)
+        ld (keydatbnc),a
+        or a
+        ret
+keymem4 ld hl,cfgkeyflg             ;memory full, disable enhanced keymapping
+        ld (hl),0
+        ret
+
+;### KEYCFS -> save enhanced keyboard configuration into INI file
+;### Input      B=file handle
+keycfs  ld a,(cfgkeyflg)
+        or a
+        ret z
+        ld a,(5*1+prgmemtab+0)
+        ld e,a
+        ld a,b
+        ld hl,(5*1+prgmemtab+1)
+        ld bc,(5*1+prgmemtab+3)
+        jp SyFile_FILOUT            ;save enhanced keyboard data
+
+;### KEYCFL -> load enhanced keyboard configuration from KEX/INI file
+;### Input      B=file handle
+;### Output     CF=1 memory full/file error
+;###            KEYACT called
+keycfl  ld a,(cfgkeyflg)
+        or a
+        jr z,keyact
+keycfl1 push bc
+        call keymem                 ;load switchable maps
+        pop de
+        jr c,keyact
+        ld a,(5*1+prgmemtab+0)
+        ld e,a
+        ld a,d
+        ld hl,(5*1+prgmemtab+1)
+        call SyFile_FILINP
+        jr nc,keyact
+        call keymem4
+        call keymem
+        scf
+;### KEYACT -> activate or deactivate enhanced keymap settings
+;### Destroyed  BC,DE,HL,IX,IY
+keyact  push af
+        ld hl,(dskvaradr)
+        ld bc,symextkmf
+        add hl,bc
+        ld a,(cfgkeyflg)
+        push af
+        ld b,a
+        xor a
+        rst #20:dw jmp_bnkwbt
+        ld bc,keydatmp1-28
+        rst #20:dw jmp_bnkwwd
+        ld bc,keydatmp2-28
+        rst #20:dw jmp_bnkwwd
+        call keystd                 ;delete systray, if existing
+        pop af
+        or a
+        jr z,keyact0
+        bit 1,a
+        jr z,keyact2
+        ld a,(cfgkeylyc)            ;generate systray menu
+        push af
+        ld (keymendat),a
+        ld a,(keydatbnc)
+        ld hl,(5*1+prgmemtab+1)
+        inc hl:inc hl
+        ld de,keymen_txt1+6
+        pop bc
+keyact1 push bc
+        push hl
+        push de
+
+        push hl
+        push de
+        push af
+        ld bc,22
+        rst #20:dw jmp_bnkcop       ;copy description
+        pop af
+        pop hl
+        ld bc,10+22
+        add hl,bc                   ;skip text+gfxheader
+        ex de,hl
+        pop hl
+        ld c,22
+        add hl,bc                   ;jump to icon data
+        push af
+        ld c,14
+        rst #20:dw jmp_bnkcop       ;copy iconbitmap
+        pop af
+
+        pop hl
+        ld bc,keymen_txt2-keymen_txt1
+        add hl,bc
+        ex de,hl
+        pop hl
+        ld c,keylaysiz
+        add hl,bc
+        pop bc
+        djnz keyact1
+
+keyact2 xor a
+        ld (keydatlyp),a
+        call keyswt                 ;switch keymap to position 0
+keyact0 pop af
+        ret
+
+;### KEYSTD -> remove systray icon
+keystd  ld a,(keydatsti)
+        inc a
+        ret z
+        dec a
+        call SyDesktop_STIREM
+        ld a,-1
+        ld (keydatsti),a
+        ret
+
+;### KEYNXT -> switches to next keymap, if switchable keymaps active
+keynxt  ld a,(cfgkeyflg)
+        bit 1,a
+        ret z
+        ld hl,keydatlyp
+        inc (hl)
+        ld a,(cfgkeylyc)
+        cp (hl)
+        jr nz,keyswt
+        ld (hl),0
+;### KEYSWT -> switches to selected keylayout
+;### Input      (keydatlyp)=layout
+keyswt  call keystd
+        ld a,(keydatlyp)
+        ld de,keylaysiz
+        call clcm16
+        ld bc,(5*1+prgmemtab+1)
+        add hl,bc                   ;layout adr
+        ld a,(5*1+prgmemtab+0)
+        rst #20:dw jmp_bnkrwd       ;c=layout (1-x), b=tree (1-x, +32=full translation, 0=no tree)
+        ld a,b
+        ld (keyswt1+1),a
+        push hl
+        ld a,c
+        dec a
+        ld de,keymapsiz*2
+        call clcm16                 ;hl=mapofs
+        push hl
+        ld a,(cfgkeylyc)
+        ld de,keylaysiz
+        call clcm16                 ;hl=size of all layouts
+        pop bc
+        push hl
+        add hl,bc
+        ld bc,(5*1+prgmemtab+1)
+        push bc
+        add hl,bc                   ;hl=mapadr
+        ld bc,keymapsiz*2
+        ld de,keydatmp1
+        ld a,(keydatbnc)
+        rst #20:dw jmp_bnkcop       ;copy selected keymap
+        ld a,(cfgkeympc)
+        ld de,keymapsiz*2
+        call clcm16                 ;hl=size of all maps
+        pop bc
+        add hl,bc
+        pop bc
+        add hl,bc                   ;hl=tree data begin
+keyswt1 ld a,0
+        push af
+        sub 1
+        jr c,keyswt2
+        and 31
+        add a
+        ld c,a
+        ld b,0
+        add hl,bc
+        ld a,(5*1+prgmemtab+0)
+        rst #20:dw jmp_bnkrwd       ;bc=tree offset
+        add hl,bc
+        ld (keytreadr),hl           ;set tree address
+        call keytre2                ;reset tree position
+keyswt2 pop af
+        ld hl,(cfgkeyflg)
+        and 32
+        or l
+        ld b,a
+        ld hl,(dskvaradr)
+        ld de,symextkmf
+        add hl,de
+        xor a
+        rst #20:dw jmp_bnkwbt       ;reset/set fulltree flag
+
+        pop hl                      ;hl=layout name adr
+        ld a,(cfgkeyflg)
+        cpl
+        and #82
+        ret nz
+        ld bc,22                    ;update systray icon, if active
+        add hl,bc
+        ld de,keysti_icn+3
+        ld bc,16
+        ld a,(keydatbnc)
+        rst #20:dw jmp_bnkcop       ;copy bitmap
+        ld a,2
+        ld de,keysti_icn
+        ld (de),a
+        ld a,(App_BnkNum)
+        ld l,1
+        call SyDesktop_STIADD
+        ret c
+        ld (keydatsti),a
+        ret
+
+;### KEYSWTx -> switch to keymap via systray menu
+keyswta xor a :jr keyswt0
+keyswtb ld a,1:jr keyswt0
+keyswtc ld a,2:jr keyswt0
+keyswtd ld a,3:jr keyswt0
+keyswte ld a,4
+keyswt0 ld (keydatlyp),a
+        call keyswt
+        jp prgprz0
+
+;### KEYINF -> builds keyboard information
+;### Input      HL=window record of info-subwin, D=bank
+;### Output     (App_MsgBuf+2)=header
+keyinf  ld a,(App_BnkNum)
+        ld b,a
+        ld c,25
+        ld a,d
+        rst #20:dw jmp_bnkwwd
+        ld bc,keyobjinf
+        rst #20:dw jmp_bnkwwd
+
+        ld a,(cfgkeylyc)
+        or a
+        jr z,keyinf5
+        ld b,a
+        ld a,(keydatbnc)
+        ld hl,(5*1+prgmemtab+1)
+        inc hl:inc hl
+        ld de,keytxtinf3+4
+keyinf7 push bc
+        push hl
+        push de
+        ld bc,22
+        push af
+        rst #20:dw jmp_bnkcop       ;copy description
+        pop af
+        pop hl
+        ld bc,keytxtinf4-keytxtinf3
+        add hl,bc
+        ex de,hl
+        pop hl
+        ld c,keylaysiz
+        add hl,bc
+        pop bc
+        djnz keyinf7
+keyinf5 ld hl,cfgkeyflg
+
+keyinf1 call keyinf0
+        ld a,5
+        jp cplrpl
+
+keyinf0 ld a,(hl)
+        ld de,App_MsgBuf+2          ;copy header to message
+        ld bc,8
+        ldir
+        rra                         ;check for activated
+        ld c,1
+        jr nc,keyinf6
+        ld bc,cfgkeynam-cfgkeyflg-8 ;copy description
+        add hl,bc
+        ld de,keytxtinf1
+        ld c,3
+        ldir
+        inc de:inc de
+        ld c,5
+        ldir
+        inc de:inc de:inc de:inc de
+        ld c,15
+        ldir
+        ld bc,cfgkeylyc-cfgkeynam-3-5-15
+        add hl,bc
+        ld a,(hl)
+        ld ix,keydatinf1
+        ld b,5
+        ld de,16
+keyinf3 ld (ix+2),64
+        sub 1
+        jp m,keyinf4
+        ld (ix+2),1                 ;show available layers
+keyinf4 add ix,de
+        djnz keyinf3
+        ld c,9
+keyinf6 ld a,c
+        ld (keygrpinf),a
+        ret
+
+;### KEYERR -> error while loading kex file
+keyerr0 pop hl
+keyerr  ld a,b
+        call SyFile_FILCLO
+keyerr1 xor a
+        ld (App_MsgBuf+2),a
+        jp cplrpl
+
+;### KEYPRV -> shows kex preview
+;### Input      HL=path address, D=bank
+;### Output     (App_MsgBuf+2)=header
+keyprv  ld ixh,d
+        ld a,d
+        ld (keylod+2),a
+        call SyFile_FILOPN
+        jr c,keyerr1
+        ld hl,fntcnv
+        ld bc,48
+        ld de,(App_BnkNum)
+        push af
+        call SyFile_FILINP
+        pop bc
+        jr c,keyerr
+        jr nz,keyerr
+        ld de,"XK"
+        ld hl,(fntcnv+0)
+        sbc hl,de
+        jr nz,keyerr
+        ld a,(fntcnv+2)
+        or a
+        jr nz,keyerr
+        ld a,(fntcnv+3-cfgkeyflg+cfgkeylyc)
+        ld c,a
+        ld hl,keytxtinf3+4
+        ld ix,2
+keyprv1 push bc
+        push hl
+        ld iy,0
+        ld a,b
+        push af
+        ld c,1
+        call SyFile_FILPOI
+        pop bc
+        pop hl
+        jr c,keyerr0
+        ld a,(App_BnkNum)
+        ld e,a
+        ld a,b
+        ld bc,22
+        push hl
+        call SyFile_FILINP
+        pop hl
+        jr c,keyerr0
+        ld de,keytxtinf4-keytxtinf3
+        add hl,de
+        ld ix,keylaysiz-22
+        pop bc
+        dec c
+        jr nz,keyprv1
+        ld hl,fntcnv+3-cfgkeyflg+cfgkeyflg
+        set 7,(hl)
+keyprv2 ld a,b
+        call SyFile_FILCLO
+        ld hl,fntcnv+3-cfgkeyflg+cfgkeyflg
+        call keyinf0
+        ld a,6
+        jp cplrpl
+
+;### KEYLOD -> loads and activates kex-file
+;### Input      HL=path address, D=flags (bit0=active,bit7=systray, bit6=only systray changed)
+keylod  ld ixh,0
+        ld a,d
+        or a
+        jr z,keylod2
+        bit 6,a
+        jr z,keylod4
+        call keylod5
+        jr keylod6
+keylod4 ld (keylod3+1),a        ;save systray flag
+        call SyFile_FILOPN      ;activated, skip identifier, load and activated kex
+        jp c,keyerr1
+        ld c,0
+        ld ix,3
+        ld iy,0
+        push af
+        call SyFile_FILPOI
+        pop bc
+        jp c,keyerr
+        ld a,(App_BnkNum)
+        ld e,a
+        ld hl,cfgkeyflg
+        ld a,b
+        ld bc,48-3
+        push af
+        call SyFile_FILINP
+        pop bc
+        jp c,keyerr
+keylod3 ld a,0                  ;restore systray flag
+        call keylod5
+        push bc
+        call keycfl
+        pop bc
+        jp c,keyerr
+        ld a,b
+        call SyFile_FILCLO
+        ld hl,(cfgkeyfnt)
+        ld (App_MsgBuf+2),hl    ;send writing style+language
+keylod1 ld a,7
+        jp cplrpl
+keylod2 ld (cfgkeyflg),a        ;not activated, remove kex, if loaded
+keylod6 call keyact
+        jr keylod1
+keylod5 ld hl,cfgkeyflg
+        and 128
+        res 7,(hl)
+        or (hl)
+        ld (hl),a
+        ret
+
+;### KEYDED -> converts deadkey+char into combined char
+;### Input      E=second char, D=deadkey
+;### Returns    P2=1, P6=combined char
+keyded  call keytre2
+        push de
+        ld e,d
+        call keytre
+        pop de
+;### KEYFTR -> use full tree for input conversion
+;### Input      E=next input char
+;### Returns    P2=0/len, P6-P12=result string
+keyftr  call keytre
+        ld e,a
+        ld bc,FNC_DXT_KEYFTR*256+MSR_DSK_EXTDSK
+        call msgsnd
+        jp prgprz0
+
+;### KEYTRE -> executes key tree
+;### Input      E=input char
+;### Output     A=0/result length, (App_MsgBuf+6)=result string
+keytreadr   dw 0    ;tree start address
+keytreofs   dw 0    ;current address in tree
+
+keytre  ld a,(5*1+prgmemtab+0)
+        ld hl,(keytreofs)
+        rst #20:dw jmp_bnkrbt
+        ld d,b
+keytre1 ld a,(5*1+prgmemtab+0)
+        rst #20:dw jmp_bnkrbt
+        ld a,e
+        cp b
+        jr z,keytre4
+        inc hl:inc hl
+        dec d
+        jr nz,keytre1
+        ld (App_MsgBuf+6),a         ;not found -> just return last char
+        ld a,1
+keytre2 ld hl,(keytreadr)
+keytre3 ld (keytreofs),hl
+        ret
+keytre4 ld a,(5*1+prgmemtab+0)      ;found -> jump to node address
+        rst #20:dw jmp_bnkrwd
+        add hl,bc
+        rst #20:dw jmp_bnkrbt
+        inc b:dec b                 ;check, if leaf reached
+        jr z,keytre5
+        dec hl                      ;no -> store tree offset, return 0
+        xor a
+        jr keytre3
+keytre5 ld de,App_MsgBuf+6          ;yes -> copy leaf-content to result
+        ld bc,8
+        ld a,(keydatbnc)
+        push de
+        rst #20:dw jmp_bnkcop
+        pop hl
+        call strlen
+        ld a,c
+        jr keytre2
+
+
+;==============================================================================
+;### LANGUAGE ROUTINES ########################################################
+;==============================================================================
+
+;### PRGLNG -> patches language for Extended Desktop and SymbOS core
+prglng  ld hl,(App_BnkNum)
+        ld h,l
+        ld (lnglodm-4+6),hl     ;banks
+        ld hl,texts_int
+        ld (lnglodm-4+8),hl     ;text adr
+        ld hl,(prgparp)
+        ld (lnglodm-4+4),hl     ;path adr
+        ld hl,256*0+9           ;pack 0, default language 9 (ENG)
+        ld (lnglodm-4+10),hl
+        ld a,0
+        ld (lnglodm-4+12),a     ;version 0
+        ld hl,(prgparf)         ;set path always to "symbosxt"
+        ld bc,5
+        add hl,bc
+        ld e,(hl):ld (hl),"o":inc hl
+        ld d,(hl):ld (hl),"s"
+        push de
+        push hl
+        call lnglody
+        ld hl,(dskvaradr)
+        xor a
+        rst #20:dw jmp_bnkrbt
+        ld a,b
+        ld (lnglodm-4+7),a
+        ld de,symextlng-1
+        add hl,de
+        xor a
+        rst #20:dw jmp_bnkrwd
+        ld (lnglodm-4+8),bc     ;text adr
+        inc a
+        ld (lnglodm-4+11),a
+        call lnglody
+
+        pop hl                  ;restore path
+        pop de
+        ld (hl),d:dec hl
+        ld (hl),e
+        ret
+
+;### LNGSET -> gets or sets primary and secondary language
+;### Input      D=mode -> 0=get, 1=set -> L=primary, H=secondary
+;### Output     get -> L=primary, H=secondary
+lngset  dec d
+        jr nz,lngset2
+        ld (cfglngpri),hl
+        ;call prglng
+lngset1 ld a,4
+        jp cplrpl
+lngset2 ld hl,(cfglngpri)
+        ld (App_MsgBuf+2),hl
+        jr lngset1
+
+;### LNGLOD -> load from language file and patch application
+;### Input      P10=default language, P11=pack, P12=version, P6=path bank, P4/5=path address, P7=text bank, P8/9=text address
+;### Output     sends status back to application -> 1=ok, 2=disc error, 3=wrong version/pack, 4=language not available
+lnglodh db 0                    ;file handler
+lnglodm ds 10                   ;message buffer copy
+
+lnglod  call lnglodx
+        jp cplrpl1
+
+lnglodx ld hl,App_MsgBuf+4
+        ld de,lnglodm
+        ld bc,10
+        ldir
+lnglody ld a,(cfglngpri)
+        call lnglod0
+        cp 4
+        ret nz
+        ld a,(cfglngsec)
+
+lnglod0 ld (lnglod7+3),a
+        ld e,a
+        or a
+        ld a,1
+        ret z
+        ld a,(lnglodm-4+10)
+        cp e
+        ld a,1
+        ret z                   ;current language = default language -> finished
+        ld de,fntcnv
+        push de
+        ld a,(App_BnkNum)
+        add a:add a:add a:add a
+        ld hl,lnglodm-4+6
+        add (hl)
+        ld hl,(lnglodm-4+4)
+        ld bc,256
+        rst #20:dw jmp_bnkcop   ;copy path
+        pop hl
+        push hl
+lnglod8 inc hl
+        ld a,(hl)
+        or a
+        jr z,lnglod9
+        sub 32
+        jr nz,lnglod8
+        ld (hl),a
+lnglod9 dec hl:ld (hl),"g"      ;change extension to ".LNG"
+        dec hl:ld (hl),"n"
+        dec hl:ld (hl),"l"
+        pop hl
+        ld ix,(App_BnkNum-1)
+        call SyFile_FILOPN      ;open language file
+        ld (lnglodh),a
+        ld a,2
+        ret c
+        ld bc,6*16+3            ;load header + pack data
+        call lnglodl
+        jr nc,lnglod1
+lnglodf ld b,2
+lnglode push bc                 ;error, close
+        ld a,(lnglodh)
+        call SyFile_FILCLO
+        pop af
+        ret
+lnglod1 ld a,(lnglodm-4+12)
+        cp (hl)
+        ld bc,3*256+255
+        jr nz,lnglode           ;wrong version
+        inc hl
+        ld de,lnglod7+1         ;store number of languages
+        ldi
+        ld a,(lnglodm-4+11)
+        cp (hl)
+        jr nc,lnglode           ;wrong pack, too high
+        add a
+        ld e,a
+        add a
+        add e                   ;*6
+        inc a
+        ld e,a
+        ld d,0
+        add hl,de
+        ld e,(hl):inc hl
+        ld d,(hl):inc hl
+        ld (lnglod4+1),de       ;store pack size
+        ld e,(hl):inc hl
+        ld d,(hl):inc hl
+        ld (lnglod5+2),de       ;store number of texts
+        call lnglodo            ;seek to language data
+        jr c,lnglodf
+        ld bc,2*80+1            ;load language data
+        call lnglodl
+        jr c,lnglodf
+lnglod7 ld c,0                  ;\ search language
+        ld a,0                  ;/
+lnglod2 cp (hl)
+        inc hl
+        jr z,lnglod3
+        inc hl:inc hl
+        dec c
+        jr nz,lnglod2
+        ld b,4                  ;language not available
+        jr lnglode
+lnglod3 call lnglodo            ;seek to text
+        jr c,lnglodf
+        ld hl,(lnglodm-4+8)     ;load text to application
+        ld a,(lnglodm-4+7)
+        ld e,a
+lnglod4 ld bc,0
+        push hl
+        ld a,(lnglodh)
+        scf
+        call SyFile_FILCPR
+        pop hl
+        jr c,lnglodf
+
+        ld e,l:ld d,h               ;** relocate text pointers
+lnglod5 ld ix,0                 ;ix=counter
+lnglod6 inc hl
+        push hl
+        ld a,(lnglodm-4+7)
+        rst #20:dw jmp_bnkrwd
+        ld l,e:ld h,d
+        add hl,bc
+        ld c,l:ld b,h
+        pop hl
+        rst #20:dw jmp_bnkwwd
+        dec ix
+        ld a,ixl:or ixh
+        jr nz,lnglod6
+        ld b,1
+        jp lnglode
+
+lnglodo ld a,(hl):ld ixl,a:inc hl   ;** seek in file
+        ld a,(hl):ld ixh,a
+        ld iy,0
+        ld c,0
+        ld a,(lnglodh)
+        jp SyFile_FILPOI
+lnglodl ld hl,fntcnv                ;** load from file
+        ld de,(App_BnkNum)
+        push hl
+        ld a,(lnglodh)
+        call SyFile_FILINP
+        pop hl
+        ret
+
+
+;==============================================================================
 ;### DATA AREA ################################################################
 ;==============================================================================
 
@@ -4155,8 +6165,24 @@ App_BegData
 cfgdatbeg
 dicarraut   db 0    ;1=auto arrange
 dicarrgrd   db 4    ;grid type
+cfgdatflg   db 0    ;flags ([bit0]=total dynlen available, [bit1]=enhanced 255 char font [behind dyntot])
+cfgdyntot   dw 0    ;length of total dynamic config data (startmenu, icons, widgets); only available, if cfgdatflg[0]=1
+cfglngpri   db 0    ;language ID primary
+cfglngsec   db 0    ;language ID secondary (fallback if primary not available; e.g. app is in japanese, LNG has no german, but english)
 
-            ds 256-$+dicarraut
+cfgkeyflg   db 0    ;+1=keymap active, +2=keymaps switchable (always set, if cfgkeylyc>1)
+cfgkeysiz   dw 0    ;total size of additional keyboard data [behind dyntot + 255char font]
+cfgkeylyc   db 0    ;total number of keyboard layouts (1-x; 40 each)
+cfgkeympc   db 0    ;total number of keyboard maps (200 each)
+cfgkeytrc   db 0    ;total number of keyboard trees (length table at the beginning of tree data)
+cfgkeyfnt   db 0    ;required writing style (="codepage"/font)
+cfgkeylng   db 0    ;prefered language (JPN)
+cfgkeyres   ds 13   ;*res*
+cfgkeynam   ds 24   ;name
+
+            ds 256-$+cfgdatbeg-2
+
+inficnadr   dw smibeg       ;len=2, adjust above
 
 cfgdynbeg   ;start of dynamic config data (startmenu, icons, widgets)
 
@@ -4166,27 +6192,27 @@ dw stmdatend-stmdatbeg
 ;entry type -> 0=line, 1=link (+text, +link, +workdirectory, +opentype), 2=special link (+text, +2B code; 0=inactive), 3=submenu (+1B index, +text)
 
 stamen0     dw stamen0z-stamen0-1,0                                         ;length of whole block data, temp pointer to menu data record
-stamen01    db stamen02-stamen01,3,5,"Favourites",0
+stamen01    db stamen02-stamen01,3,5, 6,128,-1:dw smifavgfx+1:db " Favourites",0
 stamen02    db stamen03-stamen02,0
-stamen03    db stamen04-stamen03,3,2,"Programs",0
-stamen04    db stamen05-stamen04,3,3,"Documents",0
-stamen05    db stamen06-stamen05,3,1,"Settings",0
-stamen06    db stamen07-stamen06,2,"Help",0,            MSC_SYS_SYSHLP,0
-stamen07    db stamen08-stamen07,2,"Run...",0,          MSC_SYS_PRGSTA,0
+stamen03    db stamen04-stamen03,3,2, 6,128,-1:dw smiprggfx+1:db " Programs",0
+stamen04    db stamen05-stamen04,3,3, 6,128,-1:dw smidocgfx+1:db " Documents",0
+stamen05    db stamen06-stamen05,3,1, 6,128,-1:dw smicfggfx+1:db " Settings",0
+stamen06    db stamen07-stamen06,2,   6,128,-1:dw smihlpgfx+1:db " Help",0,          MSC_SYS_SYSHLP,0
+stamen07    db stamen08-stamen07,2,   6,128,-1:dw smirungfx+1:db " Run...",0,        MSC_SYS_PRGSTA,0
 stamen08    db stamen09-stamen08,0
-stamen09    db stamen0a-stamen09,2,"Security...",0,     MSC_SYS_SYSSEC,0
-stamen0a    db stamen0z-stamen0a,2,"Shut down...",0,    MSC_SYS_SYSQIT,0
+stamen09    db stamen0a-stamen09,2,   6,128,-1:dw smisecgfx+1:db " Security...",0,   MSC_SYS_SYSSEC,0
+stamen0a    db stamen0z-stamen0a,2,   6,128,-1:dw smioffgfx+1:db " Shut down...",0,  MSC_SYS_SYSQIT,0
 stamen0z    db 0                                                            ;end marker
 
 stamen1     dw stamen1z-stamen1-1,0     ;settings
-stamen11    db stamen12-stamen11,1,"Control panel",0,   "%cp.exe",0,0,0
-stamen13    db stamen14-stamen13,0
-stamen12    db stamen13-stamen12,1,"Display",0,         "%cpdisply.exe",0,0,0
-stamen14    db stamen15-stamen14,1,"Date and Time",0,   "%cptime.exe",0,0,0
-stamen15    db stamen16-stamen15,1,"Startmenu",0,       "%cpstartm.exe",0,0,0
+stamen11    db stamen12-stamen11,1,   6,128,-1:dw smicfggfx+1:db " Control panel",0, "%cp.exe",0,0,0
+stamen12    db stamen13-stamen12,0
+stamen13    db stamen14-stamen13,1,   6,128,-1:dw smidspgfx+1:db " Display",0,       "%cpdisply.exe",0,0,0
+stamen14    db stamen15-stamen14,1,   6,128,-1:dw smitimgfx+1:db " Date and Time",0, "%cptime.exe",0,0,0
+stamen15    db stamen16-stamen15,1,   6,128,-1:dw smimengfx+1:db " Startmenu",0,     "%cpstartm.exe",0,0,0
 stamen16    db stamen17-stamen16,0
-stamen17    db stamen18-stamen17,2,"Load",0,            MSC_SYS_SYSCFG,0
-stamen18    db stamen1z-stamen18,2,"Save",0,            MSC_SYS_SYSCFG,1
+stamen17    db stamen18-stamen17,2,   6,128,-1:dw smilodgfx+1:db " Load",0,          MSC_SYS_SYSCFG,0
+stamen18    db stamen1z-stamen18,2,   6,128,-1:dw smisavgfx+1:db " Save",0,          MSC_SYS_SYSCFG,1
 stamen1z    db 0
 
 stamen2     dw stamen2z-stamen2-1,0     ;programs
@@ -4238,6 +6264,18 @@ syspwda ds 16
 syspwdb ds 16
 syspwdc db 0        ;flags (encryption type, screen saver, lock after booting)
 
+;==============================================================================
+;%%% MULTI LANGUAGE TEXTS %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+;==============================================================================
+
+texts_int
+read"App-OSExtend-Texts.asm"
+texts_int_end
+
+list
+texts_int_len   equ texts_int_end-texts_int
+nolist
+
 ;### SYMBOS LOGO ##############################################################
 
 syslogo db 40,160,16
@@ -4260,13 +6298,6 @@ db #0f,#0f,#0f,#0f,#1e,#f0,#f0,#f0,#c3,#0f,#0f,#f8,#e1,#0f,#3c,#f0,#f0,#c3,#0f,#
 
 ;### MISC #####################################################################
 
-sysbutok    db "Ok",0
-sysbutcnc   db "Cancel",0
-sysbutapl   db "Apply",0
-sysbutbck   db "< Back",0
-sysbutnxt   db "Next >",0
-sysbutfin   db "Finish",0
-sysbutbrw   db "Browse...",0
 
 stmsetlnk2  db "%cpdisply.exe",0
 
@@ -4276,7 +6307,7 @@ db #30,#F0,#F0,#F0,#80,#00,#20,#00,#00,#00,#C0,#00,#20,#00,#00,#00,#A0,#00,#20,#
 db #20,#F7,#FF,#FF,#EC,#C4,#20,#80,#00,#00,#20,#C4,#20,#91,#11,#11,#20,#C4,#20,#B3,#AB,#AB,#A8,#C4,#20,#A3,#AB,#BB,#A8,#C4,#20,#91,#11,#11,#20,#C4,#20,#80,#00,#00,#20,#C4,#20,#B1,#B2,#B0,#A8,#C4
 db #20,#80,#00,#00,#20,#C4,#20,#F0,#F0,#F0,#E0,#C4,#20,#00,#00,#00,#00,#C4,#20,#00,#00,#00,#00,#C4,#20,#00,#00,#00,#00,#C4,#20,#00,#00,#00,#00,#C4,#30,#F0,#F0,#F0,#F0,#C4,#11,#FF,#FF,#FF,#FF,#CC
 
-cfgcpctyp   db 0
+cfghrdflg   db 0    ;Hardware -> [b0]=Proportional Mouse, [b1]=Real-Time Clock, [b2]=Mass Storage Device, [b3]=GFX9000, [b4]=longfilename support, [b5]=255 char support
 
 filmskall   db "*  "
 filmskicn   db "icn"
@@ -4291,26 +6322,78 @@ cfgmennum   db 0    ;number of startmenu entries
             ds 2
 cfgicnpos   ds 4*8  ;icon positions
 
-stmemptxt   db "[empty]",0
+
+;### KEYBOARD SYSTRAY MENU ####################################################
+
+keysti_icn  db 2,8,8:ds 2*8
+
+keymendat   dw 4
+keymendat1  dw 17,keymen_txt1, keyswta, 0
+            dw 17,keymen_txt2, keyswtb, 0
+            dw 17,keymen_txt3, keyswtc, 0
+            dw 17,keymen_txt4, keyswtd, 0
+            dw 17,keymen_txt5, keyswte, 0
+
+keymen_txt1 db 6,128,-1:dw keymen_icn1+1:db " ":ds 22
+keymen_icn1 db 2,8,7:dw $+7,$+4,14:db 0: ds 2*7
+keymen_txt2 db 6,128,-1:dw keymen_icn2+1:db " ":ds 22
+keymen_icn2 db 2,8,7:dw $+7,$+4,14:db 0: ds 2*7
+keymen_txt3 db 6,128,-1:dw keymen_icn3+1:db " ":ds 22
+keymen_icn3 db 2,8,7:dw $+7,$+4,14:db 0: ds 2*7
+keymen_txt4 db 6,128,-1:dw keymen_icn4+1:db " ":ds 22
+keymen_icn4 db 2,8,7:dw $+7,$+4,14:db 0: ds 2*7
+keymen_txt5 db 6,128,-1:dw keymen_icn5+1:db " ":ds 22
+keymen_icn5 db 2,8,7:dw $+7,$+4,14:db 0: ds 2*7
+
+;### KEYBOARD INFORMATION #####################################################
+
+keyobjinf   dw keygrpinf,172,69,0,0,2
+keygrpinf   db 10,0:dw keydatinf,0,0,00*256+00,0,0,00
+keydatinf
+dw 00,     255*256+0 ,0,           0, 0,1000,1000,0    ;00=Background
+dw 00,     255*256+1, keyobjinf1  ,1, 1, 168, 8,0      ;01=Beschreibung Zeile 1
+dw 00,     255*256+0 ,1,           0,11,1000, 1,0      ;02=separator
+dw 00,     255*256+1, keyobjinf2  ,1,13, 168, 8,0      ;03=Beschreibung Zeile 2 "layouts"
+keydatinf1
+dw 00,     255*256+1, keyobjinf3  ,9,21, 168, 8,0      ;04=Beschreibung Zeile 3
+dw 00,     255*256+1, keyobjinf4  ,9,29, 168, 8,0      ;05=Beschreibung Zeile 4
+dw 00,     255*256+1, keyobjinf5  ,9,37, 168, 8,0      ;06=Beschreibung Zeile 5
+dw 00,     255*256+1, keyobjinf6  ,9,45, 168, 8,0      ;07=Beschreibung Zeile 6
+dw 00,     255*256+1, keyobjinf7  ,9,53, 168, 8,0      ;09=Beschreibung Zeile 7
+
+keyobjinf1  dw keytxtinf1,0+4
+keyobjinf2  dw keytxtinf2,0+4
+keyobjinf3  dw keytxtinf3,0+4
+keyobjinf4  dw keytxtinf4,0+4
+keyobjinf5  dw keytxtinf5,0+4
+keyobjinf6  dw keytxtinf6,0+4
+keyobjinf7  dw keytxtinf7,0+4
+
+keytxtinf1  db "XXX (xxxxx) - ":ds 16
+keytxtinf3  db "[1] ":ds 22
+keytxtinf4  db "[2] ":ds 22
+keytxtinf5  db "[3] ":ds 22
+keytxtinf6  db "[4] ":ds 22
+keytxtinf7  db "[5] ":ds 22
 
 ;### SYMBOS SECURITY ##########################################################
 
-syswinsec   dw #1001,4+8,80,30,160,121,0,0,160,121,160,121,160,121,0,systitsec,0,0,sysgrpsec,0,0:ds 136+14
+syswinsec   dw #1001,4+8,80,30,176,121,0,0,176,121,176,121,176,121,0,systitsec,0,0,sysgrpsec,0,0:ds 136+14
 sysgrpsec   db 13,0:dw sysdatsec,0,0,13*256+8,0,0,0
 sysdatsec
 dw      00,255*256+0,2, 0,0,1000,1000,0                  ;   Hintergrund
-dw      00,255*256+8, syslogo,     0, 1,160,16,0         ;   Logo
-dw      00,255*256+3 ,sysfrmsec ,  0,21,160,44,0         ;   Rahmen
+dw      00,255*256+8, syslogo,     8, 1,160,16,0         ;   Logo
+dw      00,255*256+3 ,sysfrmsec ,  0,21,176,44,0         ;   Rahmen
 dw      00,255*256+1 ,systxtsec1,  5,69,155, 8,0         ;   Beschreibung 1
 dw      00,255*256+1 ,systxtsec2,  5,77,155, 8,0         ;   Beschreibung 2
 dw      00,255*256+1 ,systxtsec3, 20,36,144, 8,0         ;   Beschreibung 3
 dw      00,255*256+1 ,systxtsec4, 20,44,144, 8,0         ;   Beschreibung 4
-dw secwin0,255*256+16,sysbutsec1,  3,90, 50,12,0         ;07="Lock"-Button
-dw secwin2,255*256+16,sysbutsec3, 55,90, 50,12,0         ;08="Run"-Button
-dw secwin4,255*256+16,sysbutsec5,107,90, 50,12,0         ;09="Shut down"-Button
-dw secwin3,255*256+16,sysbutsec4,  3,104,50,12,0         ;10="Password"-Button
-dw secwin1,255*256+16,sysbutsec2, 55,104,50,12,0         ;11="Taskmgr"-Button
-dw secwin5,255*256+16,sysbutcnc ,107,104,50,12,0         ;12="Cancel"-Button
+dw secwin0,255*256+16,sysbutsec1,  3,90, 55,12,0         ;07="Lock"-Button
+dw secwin2,255*256+16,sysbutsec3, 60,90, 55,12,0         ;08="Run"-Button
+dw secwin4,255*256+16,sysbutsec5,117,90, 56,12,0         ;09="Shut down"-Button
+dw secwin3,255*256+16,sysbutsec4,  3,104,55,12,0         ;10="Password"-Button
+dw secwin1,255*256+16,sysbutsec2, 60,104,55,12,0         ;11="Taskmgr"-Button
+dw secwin5,255*256+16,sysbutcnc ,117,104,56,12,0         ;12="Cancel"-Button
 
 systxtsec1  dw systxtsec1t,4*1+2
 systxtsec2  dw systxtsec2t,4*1+2
@@ -4318,33 +6401,20 @@ systxtsec3  dw systxtsec3t,4*1+2
 systxtsec4  dw systxtsec4t,4*1+2
 sysfrmsec   dw sysfrmsect,2+4
 
-systitsec   db "SymbOS security",0
-systxtsec1t db "Use the Task Manager to close an",0
-systxtsec2t db "application that is not responsing.",0
-systxtsec3t db "You are logged on since",0
-systxtsec4t db "00 hours and "
-systxtsec5t db "00 minutes",0
-sysfrmsect  db "Logon information",0
-sysbutsec1  db "Lock",0
-sysbutsec2  db "Task Mgr",0
-sysbutsec3  db "Run...",0
-sysbutsec4  db "Password...",0
-sysbutsec5  db "Shut dwn...",0
-
 ;### UNLOCK ###################################################################
 
-syswinlok   dw #1001,4+8,80,40,160,93,0,0,160,93,160,93,160,93,0,systitlok,0,0,sysgrplok,0,0:ds 136+14
+syswinlok   dw #1001,4+8,80,40,176,93,0,0,176,93,176,93,176,93,0,systitlok,0,0,sysgrplok,0,0:ds 136+14
 sysgrplok   db 9,0:dw sysdatlok,0,0,9,0,0,8
 sysdatlok
 dw      00,255*256+0,2, 0,0,1000,1000,0                  ;   Hintergrund
-dw      00,255*256+8, syslogo,     0, 1,160,16,0         ;   Logo
-dw      00,255*256+1 ,systxtlok1, 18,21,155, 8,0         ;   Beschreibung 1
-dw      00,255*256+1 ,systxtlok2, 18,29,155, 8,0         ;   Beschreibung 2
-dw      00,255*256+1 ,systxtlok3, 18,47, 30, 8,0         ;   Beschreibung 3
-dw      00,255*256+1 ,systxtlok4, 18,61, 30, 8,0         ;   Beschreibung 4
-dw      00,255*256+32,sysinplok1, 63,45,090,12,0         ;   Textinput
-dw      00,255*256+32,sysinplok2, 63,59,090,12,0         ;   Textinput
-dw lokwin ,255*256+16,sysbutok  ,103,78, 50,12,0         ;08="Ok"-Button
+dw      00,255*256+8, syslogo,     8, 1,160,16,0         ;   Logo
+dw      00,255*256+1 ,systxtlok1, 10,21,155, 8,0         ;   Beschreibung 1
+dw      00,255*256+1 ,systxtlok2, 10,29,155, 8,0         ;   Beschreibung 2
+dw      00,255*256+1 ,systxtlok3, 10,47, 30, 8,0         ;   Beschreibung 3
+dw      00,255*256+1 ,systxtlok4, 10,61, 30, 8,0         ;   Beschreibung 4
+dw      00,255*256+32,sysinplok1, 76,45,090,12,0         ;   Textinput
+dw      00,255*256+32,sysinplok2, 76,59,090,12,0         ;   Textinput
+dw lokwin ,255*256+16,sysbutok  ,116,78, 50,12,0         ;08="Ok"-Button
 systxtlok1  dw systxtlok1t,4*1+2
 systxtlok2  dw systxtlok2t,4*1+2
 systxtlok3  dw systxtlok3t,4*1+2
@@ -4352,31 +6422,26 @@ systxtlok4  dw systxtlok4t,4*1+2
 sysinplok1  dw sysinplok1b,0,0,0,0,15,0
 sysinplok2  dw sysinplok2b,0,0,0,0,15,1
 
-systitlok   db "Unlock computer",0
-systxtlok1t db "This computer is in use and",0
-systxtlok2t db "has been locked.",0
-systxtlok3t db "User name:",0
-systxtlok4t db "Password:",0
 sysinplok1b ds 16
 sysinplok2b ds 16
 
 ;### PASSWORD #################################################################
 
-syswinpwd   dw #1001,4,80,40,160,93,0,0,160,93,160,93,160,93,0,systitpwd,0,0,sysgrppwd,0,0:ds 136+14
+syswinpwd   dw #1001,4,80,40,176,93,0,0,176,93,176,93,176,93,0,systitpwd,0,0,sysgrppwd,0,0:ds 136+14
 sysgrppwd   db 12,0:dw sysdatpwd,0,0,12*256+11,0,0,7
 sysdatpwd
 dw      00,255*256+0,2, 0,0,1000,1000,0              ;   Hintergrund
-dw      00,255*256+8, syslogo,     0,  1,160,16,0    ;   Logo
+dw      00,255*256+8, syslogo,     8,  1,160,16,0    ;   Logo
 dw      00,255*256+1 ,systxtpwd1,  4, 23,155, 8,0    ;   Beschreibung 1
 dw      00,255*256+1 ,systxtpwd2,  4, 37,155, 8,0    ;   Beschreibung 2
 dw      00,255*256+1 ,systxtpwd3,  4, 51, 30, 8,0    ;   Beschreibung 3
 dw      00,255*256+1 ,systxtpwd4,  4, 65, 30, 8,0    ;   Beschreibung 4
-dw      00,255*256+32,sysinppwd1, 66, 21,090,12,0    ;   Textinput
-dw      00,255*256+32,sysinppwd2, 66, 35,090,12,0    ;   Textinput
-dw      00,255*256+32,sysinppwd3, 66, 49,090,12,0    ;   Textinput
-dw      00,255*256+32,sysinppwd4, 66, 63,090,12,0    ;   Textinput
-dw paswina,255*256+16,sysbutok  , 53, 78, 50,12,0    ;10="Ok"-Button
-dw paswinb,255*256+16,sysbutcnc ,106, 78, 50,12,0    ;11="Cancel"-Button
+dw      00,255*256+32,sysinppwd1, 82, 21,090,12,0    ;   Textinput
+dw      00,255*256+32,sysinppwd2, 82, 35,090,12,0    ;   Textinput
+dw      00,255*256+32,sysinppwd3, 82, 49,090,12,0    ;   Textinput
+dw      00,255*256+32,sysinppwd4, 82, 63,090,12,0    ;   Textinput
+dw paswina,255*256+16,sysbutok  , 69, 78, 50,12,0    ;10="Ok"-Button
+dw paswinb,255*256+16,sysbutcnc ,122, 78, 50,12,0    ;11="Cancel"-Button
 systxtpwd1  dw systxtlok3t,4*1+2
 systxtpwd2  dw systxtpwd2t,4*1+2
 systxtpwd3  dw systxtpwd3t,4*1+2
@@ -4387,19 +6452,8 @@ sysinppwd3  dw sysinppwd3b,0,0,0,0,15,1
 sysinppwd4  dw sysinppwd4b,0,0,0,0,15,1
 
 prgmsgerra dw prgmsgerra1,4*1+2,prgmsgerra2,4*1+2,prgmsgerra3,4*1+2
-prgmsgerra1 db "The entered passwords do not",0
-prgmsgerra2 db "match. Please confirm your",0
-prgmsgerra3 db "new password.",0
 
 prgmsgerrb dw prgmsgerrb1,4*1+2,prgmsgerrb2,4*1+2,prgmsgerrb3,4*1+2
-prgmsgerrb1 db "The old password is not",0
-prgmsgerrb2 db "correct. Please enter the valid",0
-prgmsgerrb3 db "password to change it.",0
-
-systitpwd   db "Change Password",0
-systxtpwd2t db "Old Password:",0
-systxtpwd3t db "New Password:",0
-systxtpwd4t db "Confirm New:",0
 
 sysinppwd1b ds 16
 sysinppwd2b ds 16
@@ -4467,51 +6521,44 @@ db #81,#11,#1D,#DD,#D8,#88,#88,#83,#11,#18,#88,#88,#88,#8D,#D8,#88,#88,#88,#88,#
 
 ;### WIDGET MANAGEMENT DIALOGUES ##############################################
 
-wdgdelobj   dw dicdeltxt1,4*1+2, wdgdeltxt2,4*1+2, dicdeltxt3,4*1+2     ;confirm delete
-wdgdeltxt2  db "this widget?",0
-
-wdgpreobj   dw dicpretxt1,4*1+2, wdgpretxt2,4*1+2, dicpretxt3,4*1+2     ;too many dialogues
-wdgpretxt2  db "widget dialogue first.",0
-
-wdgmemobj   dw dicmemtxt1,4*1+2, dicmemtxt2,4*1+2, wdgmemtxt3,4*1+2     ;memory full
-wdgmemtxt3  db "available for adding this widget.",0
-
+wdgdelobj   dw wdgdeltxt1,4*1+2, wdgdeltxt2,4*1+2, msgtxt0   ,4*1+2     ;confirm delete
+wdgpreobj   dw wdgpretxt1,4*1+2, wdgpretxt2,4*1+2, msgtxt0   ,4*1+2     ;too many dialogues
+wdgmemobj   dw dicmemtxt1,4*1+2, wdgmemtxt2,4*1+2, wdgmemtxt3,4*1+2     ;memory full
 wdgfleobj   dw dicfletxt1,4*1+2, wdgfletxt2,4*1+2, dicfletxt3,4*1+2     ;file error
-wdgfletxt2  db "Wrong widget format or disc error.",0
-
 wdgldeobj   dw wdgldetxt1,4*1+2, wdgldetxt2,4*1+2, wdgldetxt3,4*1+2     ;loading error
-wdgldetxt1  db "Error while loading and executing",0
-wdgldetxt2  db "widget. Disc error, corrupt widget",0
-wdgldetxt3  db "file or memory full.",0
+
+
+dicprptxtf  db "########### Bytes",0
+dicprptxtg  db " Bytes",0
 
 ;### WIDGET NEW DIALOGUE ######################################################
 
-wdgnewwin   dw #1401,4+16,074,027,176,107,0,0,176,107,176,107,176,107,0,wdgnewtit,0,0
+wdgnewwin   dw #1401,4+16,074,027,184,107,0,0,184,107,184,107,184,107,0,wdgnewtit,0,0
 wdgnewwin0  dw wdgnewgrp1,0,0:ds 136+14
 
 wdgnewgrp1  db 12,0:dw wdgnewdat1,0,0,256*5+4,0,0,11    ;* location
 wdgnewdat1
 dw      00,         0,2,          0,0,1000,1000,0       ;00=Hintergrund
 dw      00,         0,3,          05, 04, 32,80,0       ;01=grafik dummy
-dw      00,         0,1,          05, 88,166, 1,0       ;02=Trennlinie
-dw wdgnew1,255*256+16,sysbutnxt,  86, 92, 40,12,0       ;03="Next"  -Button
-dw wdgnewx,255*256+16,sysbutcnc, 131, 92, 40,12,0       ;04="Cancel"-Button
+dw      00,         0,1,          05, 88,172, 1,0       ;02=Trennlinie
+dw wdgnew1,255*256+16,sysbutnxt,  86, 92, 44,12,0       ;03="Next"  -Button
+dw wdgnewx,255*256+16,sysbutcnc, 135, 92, 44,12,0       ;04="Cancel"-Button
 dw      00,255*256+ 1,wdgnewdsc1, 41, 04,130, 8,0       ;05=Beschreibung 1
 dw      00,255*256+ 1,wdgnewdsc2, 41, 12,130, 8,0       ;06=Beschreibung 2
 dw      00,255*256+ 1,wdgnewdsc3, 41, 20,130, 8,0       ;07=Beschreibung 3
 dw      00,255*256+ 1,wdgnewdsc4, 41, 28,130, 8,0       ;08=Beschreibung 4
 dw      00,255*256+ 1,wdgnewdsc5, 41, 44,130, 8,0       ;09=Beschreibung "Command line"
-dw      00,255*256+32,wdgnewinp1, 41, 54,130,12,0       ;10=Input "Command line"
-dw wdgnewb,255*256+16,sysbutbrw,  41, 68, 40,12,0       ;11=Button "Browse..."
+dw      00,255*256+32,wdgnewinp1, 41, 54,138,12,0       ;10=Input "Command line"
+dw wdgnewb,255*256+16,sysbutbrw,  41, 68, 50,12,0       ;11=Button "Browse..."
 
 wdgnewgrp2  db 10,0:dw wdgnewdat2,0,0,256*6+5,0,0,8     ;* size
 wdgnewdat2
 dw      00,         0,2,          0,0,1000,1000,0       ;00=Hintergrund
 dw      00,         0,3,          05, 04, 32,80,0       ;01=grafik dummy
-dw      00,         0,1,          05, 88,166, 1,0       ;02=Trennlinie
-dw wdgnew2,255*256+16,sysbutbck,  45, 92, 40,12,0       ;03="Back"  -Button
-dw wdgnew5,255*256+16,sysbutfin,  86, 92, 40,12,0       ;04="Finish"-Button
-dw wdgnewx,255*256+16,sysbutcnc, 131, 92, 40,12,0       ;05="Cancel"-Button
+dw      00,         0,1,          05, 88,172, 1,0       ;02=Trennlinie
+dw wdgnew2,255*256+16,sysbutbck,  41, 92, 44,12,0       ;03="Back"  -Button
+dw wdgnew5,255*256+16,sysbutfin,  86, 92, 44,12,0       ;04="Finish"-Button
+dw wdgnewx,255*256+16,sysbutcnc, 135, 92, 44,12,0       ;05="Cancel"-Button
 dw      00,255*256+ 1,wdgnewdsc6, 41, 04,130, 8,0       ;06=Beschreibung 1
 dw      00,255*256+ 1,wdgnewdsc7, 41, 12,130, 8,0       ;07=Beschreibung 2
 dw      00,255*256+ 1,wdgnewdsc8, 41, 20,130, 8,0       ;08=Beschreibung 3
@@ -4529,43 +6576,33 @@ wdgnewdsc8  dw wdgnewtxt8,2+4
 wdgnewinp1  dw wdgnewbuf1,0,0,0,0,127,0
 wdgnewbuf1  ds 128
 
-wdgnewtit   db "Create Widget",0
-
-wdgnewtxt1  db "Type the location and name of",0
-wdgnewtxt2  db "the widget you want to add to",0
-wdgnewtxt3  db "the desktop. Or, search for the",0
-wdgnewtxt4  db "widget by clicking Browse.",0
-wdgnewtxt5  db "Widget path",0
-
-wdgnewtxt6  db "Choose a size for the widget.",0
-wdgnewtxt7  db "The following size(s) are",0
-wdgnewtxt8  db "available:",0
-
 wdgsizobj   dw 8,0,wdgsizlst,0,1,wdgsizrow,0,1
 wdgsizrow   dw 0,81,0,0
 wdgsizlst   dw 0,ctxwdgtxta, 1,ctxwdgtxtb, 2,ctxwdgtxtc, 3,ctxwdgtxtd, 4,ctxwdgtxte, 5,ctxwdgtxtf, 6,ctxwdgtxtg, 7,ctxwdgtxth
 
+;### FOLDER MANAGEMENT MESSAGES ###############################################
+
+msgtxt0     db 0
+
+folglaobj   dw folgentxt1,4*1+2, follautxt2,4*1+2, msgtxt0   ,4*1+2     ;generate -> no launcher
+folgdiobj   dw folgentxt1,4*1+2, foldistxt2,4*1+2, msgtxt0   ,4*1+2     ;generate -> disc error
+folrdiobj   dw folrentxt1,4*1+2, foldistxt2,4*1+2, msgtxt0   ,4*1+2     ;rename   -> disc error
+
 ;### ICON MANAGEMENT DIALOGUES ################################################
 
 dicdelobj   dw dicdeltxt1,4*1+2, dicdeltxt2,4*1+2, dicdeltxt3,4*1+2     ;confirm delete
-dicdeltxt1  db "Are you sure you want to delete",0  ;confirm delete
 dicdeltxt2  db "'":ds 11+1+11+3
-dicdeltxt3  db 0
+dicdeltxt3  equ msgtxt0
 
 dicpreobj   dw dicpretxt1,4*1+2, dicpretxt2,4*1+2, dicpretxt3,4*1+2     ;too many dialogues
-dicpretxt1  db "Please close the previouse",0       ;too many dialogues
-dicpretxt2  db "shortcut dialogue first.",0
-dicpretxt3  db 0
+dicpretxt3  equ msgtxt0
 
 dicfleobj   dw dicfletxt1,4*1+2, dicfletxt2,4*1+2, dicfletxt3,4*1+2     ;error while reading icon file
-dicfletxt1  db "Error while reading file.",0        ;error while reading icon
-dicfletxt2  db "Wrong icon format or disc error.",0
-dicfletxt3  db 0
+dicfletxt3  equ msgtxt0
 
 dicmemobj   dw dicmemtxt1,4*1+2, dicmemtxt2,4*1+2, dicmemtxt3,4*1+2     ;memory full
-dicmemtxt1  db "Memory full.",0                     ;memory full
-dicmemtxt2  db "There is no remaining memory",0
-dicmemtxt3  db "available for saving this link.",0
+
+dicfctobj   dw dicfcttxt1,4*1+2, dicfcttxt2,4*1+2, dicfcttxt3,4*1+2     ;can't cut folders
 
 dicrenwin   dw #0001,4+8                                                ;rename
 dicrenwin1  dw           0,0,46,24,0,0,46,24,46,24,46,24,0,0,0,0,dicrengrp,0,0:ds 136+14
@@ -4582,32 +6619,32 @@ dicrentxt2b ds 12
 
 ;### ICON NEW DIALOGUE ########################################################
 
-dicnewwin   dw #1401,4+16,074,027,176,107,0,0,176,107,176,107,176,107,0,dicnewtit,0,0
+dicnewwin   dw #1401,4+16,074,027,184,107,0,0,184,107,184,107,184,107,0,dicnewtit,0,0
 dicnewwin0  dw dicnewgrp1,0,0:ds 136+14
 
 dicnewgrp1  db 12,0:dw dicnewdat1,0,0,256*5+4,0,0,11    ;* location
 dicnewdat1
 dw      00,         0,2,          0,0,1000,1000,0       ;00=Hintergrund
 dw      00,         0,3,          05, 04, 32,80,0       ;01=grafik dummy
-dw      00,         0,1,          05, 88,166, 1,0       ;02=Trennlinie
-dw dicnew1,255*256+16,sysbutnxt,  86, 92, 40,12,0       ;03="Next"  -Button
-dw dicnewx,255*256+16,sysbutcnc, 131, 92, 40,12,0       ;04="Cancel"-Button
+dw      00,         0,1,          05, 88,174, 1,0       ;02=Trennlinie
+dw dicnew1,255*256+16,sysbutnxt,  86, 92, 44,12,0       ;03="Next"  -Button
+dw dicnewx,255*256+16,sysbutcnc, 135, 92, 44,12,0       ;04="Cancel"-Button
 dw      00,255*256+ 1,dicnewdsc1, 41, 04,130, 8,0       ;05=Beschreibung 1
 dw      00,255*256+ 1,dicnewdsc2, 41, 12,130, 8,0       ;06=Beschreibung 2
 dw      00,255*256+ 1,dicnewdsc3, 41, 20,130, 8,0       ;07=Beschreibung 3
 dw      00,255*256+ 1,dicnewdsc4, 41, 28,130, 8,0       ;08=Beschreibung 4
 dw      00,255*256+ 1,dicnewdsc5, 41, 44,130, 8,0       ;09=Beschreibung "Command line"
-dw      00,255*256+32,dicnewinp1, 41, 54,130,12,0       ;10=Input "Command line"
-dw dicnewb,255*256+16,sysbutbrw,  41, 68, 40,12,0       ;11=Button "Browse..."
+dw      00,255*256+32,dicnewinp1, 41, 54,138,12,0       ;10=Input "Command line"
+dw dicnewb,255*256+16,sysbutbrw,  41, 68, 50,12,0       ;11=Button "Browse..."
 
 dicnewgrp2  db 09,0:dw dicnewdat2,0,0,256*6+5,0,0,8     ;* name
 dicnewdat2
 dw      00,         0,2,          0,0,1000,1000,0       ;00=Hintergrund
 dw      00,         0,3,          05, 04, 32,80,0       ;01=grafik dummy
-dw      00,         0,1,          05, 88,166, 1,0       ;02=Trennlinie
-dw dicnew2,255*256+16,sysbutbck,  45, 92, 40,12,0       ;03="Back"  -Button
-dw dicnew3,255*256+16,sysbutnxt,  86, 92, 40,12,0       ;04="Next"  -Button
-dw dicnewx,255*256+16,sysbutcnc, 131, 92, 40,12,0       ;05="Cancel"-Button
+dw      00,         0,1,          05, 88,174, 1,0       ;02=Trennlinie
+dw dicnew2,255*256+16,sysbutbck,  41, 92, 44,12,0       ;03="Back"  -Button
+dw dicnew3,255*256+16,sysbutnxt,  86, 92, 44,12,0       ;04="Next"  -Button
+dw dicnewx,255*256+16,sysbutcnc, 135, 92, 44,12,0       ;05="Cancel"-Button
 dw      00,255*256+ 1,dicnewdsc6, 41, 04,130, 8,0       ;06=Beschreibung 6
 dw      00,255*256+32,dicnewinp2, 41, 20, 72,12,0       ;07=Input "Command line"
 dw      00,255*256+32,dicnewinp3, 41, 34, 72,12,0       ;08=Input "Command line"
@@ -4616,15 +6653,15 @@ dicnewgrp3  db 10,0:dw dicnewdat3,0,0,256*6+5,0,0,8     ;* icon
 dicnewdat3
 dw      00,         0,2,          0,0,1000,1000,0       ;00=Hintergrund
 dw      00,         0,3,          05, 04, 32,80,0       ;01=grafik dummy
-dw      00,         0,1,          05, 88,166, 1,0       ;02=Trennlinie
-dw dicnew4,255*256+16,sysbutbck,  45, 92, 40,12,0       ;03="Back"  -Button
-dw dicnew5,255*256+16,sysbutfin,  86, 92, 40,12,0       ;04="Finish"-Button
-dw dicnewx,255*256+16,sysbutcnc, 131, 92, 40,12,0       ;05="Cancel"-Button
+dw      00,         0,1,          05, 88,174, 1,0       ;02=Trennlinie
+dw dicnew4,255*256+16,sysbutbck,  41, 92, 44,12,0       ;03="Back"  -Button
+dw dicnew5,255*256+16,sysbutfin,  86, 92, 44,12,0       ;04="Finish"-Button
+dw dicnewx,255*256+16,sysbutcnc, 135, 92, 44,12,0       ;05="Cancel"-Button
 dw      00,255*256+ 1,dicnewdsc7, 41, 04,130, 8,0       ;06=Beschreibung 7
 dicnewdat3a
 dw      00,255*256+ 8,dicnewicn,  41, 20,24, 24,0       ;07=Grafik        Icon
-dw dicnewf,255*256+16,dicnewtxt8, 70, 19,64, 12,0       ;08=Button File   Icon
-dw dicnewi,255*256+16,dicnewtxt9, 70, 33,64, 12,0       ;09=Button Choose Icon
+dw dicnewf,255*256+16,dicnewtxt8, 70, 19,82, 12,0       ;08=Button File   Icon
+dw dicnewi,255*256+16,dicnewtxt9, 70, 33,82, 12,0       ;09=Button Choose Icon
 
 
 dicnewdsc1  dw dicnewtxt1,2+4
@@ -4641,33 +6678,22 @@ dicnewinp3  dw dicnewbuf3,0,0,0,0,11,0
 
 dicnewicn   ds 12*24+10
 
-dicnewtit   db "Create Shortcut",0
-dicnewtxt1  db "Type the location and name of",0
-dicnewtxt2  db "the item you want to create a",0
-dicnewtxt3  db "shortcut to. Or, search for the",0
-dicnewtxt4  db "item by clicking Browse.",0
-dicnewtxt5  db "Command line",0
-dicnewtxt6  db "Select a name for the shortcut:",0
-dicnewtxt7  db "Select an icon for the shortcut:",0
-dicnewtxt8  db "Use file icon",0
-dicnewtxt9  db "Select icon...",0
-
 dicnewbuf1  ds 128
 dicnewbuf2  ds 12
 dicnewbuf3  ds 12
 
 ;### ICON PROPERTY DIALOGUE ###################################################
 
-dicprpwin   dw #1401,4+16,079,011,160,142,0,0,160,142,160,142,160,142,0,dicprptit,0,0
+dicprpwin   dw #1401,4+16,079,011,160,142,0,0,160,142,160,142,160,142,0,systxtprp,0,0
 dicprpwin0  dw dicprpgrp1,0,0:ds 136+14
 
 dicprpgrp2  db 19,0:dw dicprpdat2,0,0,256*4+3,0,0,3
 dicprpdat2
 dw      00,         0,2,          0,0,1000,1000,0       ;00=Hintergrund
 dw dicprt, 255*256+20,dicprptab,   0,  1,160,11,0       ;01=Tab-Leiste
-dw dicpro, 255*256+16,sysbutok,   31,127, 40,12,0       ;02="Ok"    -Button
-dw dicprc, 255*256+16,sysbutcnc,  73,127, 40,12,0       ;03="Cancel"-Button
-dw dicpry, 255*256+16,sysbutapl, 115,127, 40,12,0       ;04="Apply" -Button
+dw dicpro, 255*256+16,sysbutok,   19,127, 44,12,0       ;02="Ok"    -Button
+dw dicprc, 255*256+16,sysbutcnc,  65,127, 44,12,0       ;03="Cancel"-Button
+dw dicpry, 255*256+16,sysbutapl, 111,127, 44,12,0       ;04="Apply" -Button
 dicprpdat2a
 dw      00,255*256+10,dicprpicn,  05, 15, 24,24,0       ;05=Icon "Icon"
 dw      00,255*256+32,dicprpinp3, 51, 14, 72,12,0       ;06=Name1 "Icon"
@@ -4688,9 +6714,9 @@ dicprpgrp1  db 23,0:dw dicprpdat1,0,0,256*4+3,0,0,20
 dicprpdat1
 dw      00,         0,2,          0,0,1000,1000,0       ;00=Hintergrund
 dw dicprt, 255*256+20,dicprptab,   0,  1,160,11,0       ;01=Tab-Leiste
-dw dicpro, 255*256+16,sysbutok,   31,127, 40,12,0       ;02="Ok"    -Button
-dw dicprc, 255*256+16,sysbutcnc,  73,127, 40,12,0       ;03="Cancel"-Button
-dw dicpry, 255*256+16,sysbutapl, 115,127, 40,12,0       ;04="Apply" -Button
+dw dicpro, 255*256+16,sysbutok,   19,127, 44,12,0       ;02="Ok"    -Button
+dw dicprc, 255*256+16,sysbutcnc,  65,127, 44,12,0       ;03="Cancel"-Button
+dw dicpry, 255*256+16,sysbutapl, 111,127, 44,12,0       ;04="Apply" -Button
 dicprpdat1a
 dw      00,255*256+10,dicprpicn,  05, 15, 24,24,0       ;05=Icon "Icon"
 dw      00,255*256+ 1,dicprpdsc9, 51, 18,150, 8,0       ;06=Name1 "Icon"
@@ -4743,40 +6769,13 @@ dicprprun   dw 4,0,dicprplst,0,1,dicprprow,0,1
 dicprprow   dw 0,1000,0,0
 dicprplst   dw 0,dicprptxtq, 0,dicprptxtr, 0,dicprptxts, 0,dicprptxtt
 
-dicprptit   db "Properties",0
-dicprptxt0  db "File name",0
-dicprptxt1  db "File type",0
-dicprptxt2  db "Open with",0
-dicprptxt3  db "Location",0
-dicprptxt4  db "Size",0
-dicprptxt5  db "Modified",0
 dicprptxt8  ds 33
 
 dicprpdtm1  db "01.01.2000, 00:00:00",0
 
-dicprptxta  db "Read only",0
-dicprptxtb  db "Hidden",0
-dicprptxtc  db "System",0
-dicprptxtd  db "Archive",0
-
-dicprptxte  db "EXE-file",0
-dicprptxtf  db "########### Bytes",0
-dicprptxtg  db " Bytes",0
-dicprptxth  db "directory",0
 dicprptxti  ds 256
 
-dicprptxtj  db "General",0
-dicprptxtk  db "Shortcut",0
-dicprptxtl  db "Target",0
-dicprptxto  db "Start in",0
-dicprptxtp  db "Run",0
-dicprptxtq  db "Default",0
-dicprptxtr  db "Normal window",0
-dicprptxts  db "Minimized",0
-dicprptxtt  db "Maximized",0
 dicprptxtu  ds 13
-dicprptxtm  db "Browse target...",0
-dicprptxtn  db "Change icon...",0
 
 dicprpbuf1  ds 128      ;filepath
 dicprpbuf2  ds 128      ;startdirectory
@@ -4793,7 +6792,7 @@ dw 5,ctxwdgtxt2,ctxwdgsiz,0         ;resize
 dw 1,ctxwdgtxt3,wdgdel,0            ;delete
 dw 9,0,0,0
 ctxwdg0
-dw 1,ctxwdgtxt4,wdgprp,0            ;properties
+dw 1,systxtprp,wdgprp,0            ;properties
 
 ctxwdgsiz   dw 8
 dw 1,ctxwdgtxta,wdgrsz0,0
@@ -4804,11 +6803,6 @@ dw 1,ctxwdgtxte,wdgrsz4,0
 dw 1,ctxwdgtxtf,wdgrsz5,0
 dw 1,ctxwdgtxtg,wdgrsz6,0
 dw 1,ctxwdgtxth,wdgrsz7,0
-
-ctxwdgtxt1  db "Move",0
-ctxwdgtxt2  db "Resize",0
-ctxwdgtxt3  db "Delete",0
-ctxwdgtxt4  db "Properties",0
 
 ctxwdgtxta  db "xxxxx x xxxxx",0
 ctxwdgtxtb  db "xxxxx x xxxxx",0
@@ -4831,15 +6825,7 @@ dw 1,ctxicntxt4,dicshc,0            ;create shortcut
 dw 1,ctxicntxt5,dicdel,0            ;delete
 dw 1,ctxicntxt6,dicren,0            ;rename
 dw 9,0,0,0
-dw 1,ctxicntxt7,dicprp,0            ;properties
-
-ctxicntxt1  db "Open",0
-ctxicntxt2  db "Cut",0
-ctxicntxt3  db "Copy",0
-ctxicntxt4  db "Create Shortcut",0
-ctxicntxt5  db "Delete",0
-ctxicntxt6  db "Rename",0
-ctxicntxt7  db "Properties",0
+dw 1,systxtprp,dicprp,0             ;properties
 
 ;### DESKTOP CONTEXT MENU #####################################################
 
@@ -4853,7 +6839,7 @@ ctxdsk0
 dw 0,ctxdsktxt4,dicpst,0            ;paste
 dw 5,ctxdsktxt5,ctxdsknew,0         ;new
 dw 9,0,0,0
-dw 1,ctxdsktxt6,dskprp,0            ;properties
+dw 1,systxtprp,dskprp,0             ;properties
 
 ctxdskarr  dw 7                     ;arrange icons ->
 dw 1,ctxdsktxt8,dicarra,0           ;8 x 8 grid
@@ -4865,24 +6851,11 @@ dw 9,0,0,0
 ctxdskarr0
 dw 1,ctxdsktxtd,dicarr,0            ;auto arrange
 
-ctxdsknew  dw 2                     ;new ->
+ctxdsknew  dw 4                     ;new ->
+dw 1,ctxdsktxtf,folnew,0            ;folder
 dw 1,ctxdsktxt7,dicnew,0            ;shortcut
+dw 9,0,0,0
 dw 1,ctxdsktxte,wdgnew,0            ;widget
-
-ctxdsktxt1  db "Arrange Icons",0
-ctxdsktxt2  db "Line Up Icons",0
-ctxdsktxt3  db "Refresh",0
-ctxdsktxt4  db "Paste",0
-ctxdsktxt5  db "New",0
-ctxdsktxt6  db "Properties",0
-ctxdsktxt7  db "Shortcut",0
-ctxdsktxt8  db "8 x 8 grid",0
-ctxdsktxt9  db "13 x 11 grid",0
-ctxdsktxta  db "26 x 22 grid",0
-ctxdsktxtb  db "48 x 40 grid",0
-ctxdsktxtc  db "52 x 44 grid",0
-ctxdsktxtd  db "Auto arrange",0
-ctxdsktxte  db "Widget",0
 
 ;### DESKTOP WINDOW ###########################################################
 
@@ -4899,6 +6872,28 @@ dskbgrobj   dw 0,64,0,-1, -1,  1,  1,0
 dskbgrobj1  ds 40*16                    ;40 objects (icons + widgets)
 dskbgricn   ds 32*8                     ;32 icons
 
-;### START MENU ###############################################################
+;### STARTMENU ICONS ##########################################################
+
+smibeg          ;*** don't change order for INI compatibility (see CFGSMIH!)
+smifavgfx   db 4,8,7:dw $+7,$+4,28:db 5: db #6d,#dd,#66,#66, #d0,#00,#dd,#d6, #d0,#0f,#f0,#01, #d0,#ff,#ff,#01, #d0,#0f,#f0,#01, #d0,#00,#00,#01, #61,#11,#11,#16
+smifldgfx   db 4,8,7:dw $+7,$+4,28:db 5: db #6d,#dd,#66,#66, #d0,#00,#dd,#d6, #d0,#00,#00,#01, #d0,#00,#00,#01, #d0,#00,#00,#01, #d0,#00,#00,#01, #61,#11,#11,#16
+smiappgfx   db 4,8,7:dw $+7,$+4,28:db 5: db #61,#11,#11,#16, #17,#77,#74,#71, #12,#22,#22,#21, #12,#ff,#2f,#21, #12,#22,#2f,#21, #12,#22,#22,#21, #61,#11,#11,#16
+
+smiprggfx   db 4,8,7:dw $+7,$+4,28:db 5: db #61,#11,#11,#16, #17,#77,#76,#71, #18,#88,#88,#81, #18,#f8,#a8,#81, #18,#d8,#d8,#81, #18,#88,#88,#81, #61,#11,#11,#16
+smidocgfx   db 4,8,7:dw $+7,$+4,28:db 5: db #66,#68,#66,#66, #66,#87,#86,#66, #68,#78,#88,#66, #dd,#dd,#dd,#16, #d0,#00,#00,#16, #6d,#00,#00,#01, #61,#11,#11,#11
+smicfggfx   db 4,8,7:dw $+7,$+4,28:db 5: db #66,#6c,#66,#66, #6c,#6c,#6c,#66, #6f,#cd,#cf,#66, #cc,#c1,#cc,#c6, #ff,#cc,#cf,#f6, #6c,#fc,#fc,#66, #6f,#6c,#6f,#66
+smihlpgfx   db 4,8,7:dw $+7,$+4,28:db 5: db #66,#1f,#f1,#66, #61,#fc,#cf,#16, #1f,#ff,#fc,#f1, #ff,#fc,#cc,#f1, #ff,#ff,#ff,#18, #1f,#cf,#f1,#81, #61,#ff,#18,#16
+smirungfx   db 4,8,7:dw $+7,$+4,28:db 5: db #13,#33,#16,#66, #14,#44,#17,#77, #61,#21,#88,#87, #66,#16,#a8,#f7, #61,#41,#88,#87, #12,#22,#17,#77, #13,#33,#16,#66
+smisecgfx   db 4,8,7:dw $+7,$+4,28:db 5: db #66,#66,#63,#f6, #67,#76,#1f,#36, #7c,#c1,#66,#66, #c1,#1c,#77,#77, #c1,#1c,#cc,#cc, #7c,#c7,#7c,#7c, #67,#76,#67,#67
+smioffgfx   db 4,8,7:dw $+7,$+4,28:db 5: db #67,#77,#77,#76, #77,#11,#11,#77, #71,#81,#81,#17, #71,#18,#11,#17, #71,#11,#81,#17, #77,#11,#11,#77, #67,#77,#77,#76
+
+;control panel
+smidspgfx   db 4,8,7:dw $+7,$+4,28:db 5: db #67,#77,#77,#76, #77,#11,#11,#77, #71,#18,#81,#17, #71,#81,#11,#17, #71,#11,#11,#17, #77,#11,#11,#77, #67,#77,#77,#76
+smitimgfx   db 4,8,7:dw $+7,$+4,28:db 5: db #66,#77,#77,#66, #67,#8a,#18,#76, #78,#88,#18,#87, #7a,#81,#88,#a7, #78,#18,#88,#87, #67,#88,#a8,#76, #66,#77,#77,#66
+smimengfx   db 4,8,7:dw $+7,$+4,28:db 5: db #61,#66,#66,#66, #f1,#17,#ff,#7f, #71,#81,#77,#77, #f1,#88,#17,#ff, #71,#88,#81,#77, #f1,#81,#1f,#7f, #61,#16,#11,#66
+smilodgfx   db 4,8,7:dw $+7,$+4,28:db 5: db #61,#16,#66,#66, #10,#01,#16,#66, #10,#00,#77,#77, #10,#07,#22,#27, #10,#72,#22,#76, #17,#22,#27,#66, #77,#77,#76,#66
+smisavgfx   db 4,8,7:dw $+7,$+4,28:db 5: db #11,#11,#11,#11, #1f,#ee,#ee,#f1, #1f,#ee,#ee,#f1, #1f,#ff,#ff,#f1, #1f,#11,#c1,#f1, #1f,#11,#c1,#f1, #61,#11,#11,#11
+
+;### STARTMENU ITEMS #########################################################
 
 stmrec  ds stmrecmax
