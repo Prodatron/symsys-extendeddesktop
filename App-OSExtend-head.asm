@@ -97,6 +97,7 @@ use_SyDesktop_WINSIN    equ 0   ;Redraws the content of a control collection
 use_SyDesktop_MENCTX    equ 1   ;Opens a context menu
 use_SyDesktop_STIADD    equ 1   ;Adds an icon to the systray
 use_SyDesktop_STIREM    equ 1   ;Removes an icon from the systray
+use_SyDesktop_STIUPD    equ 1   ;Updates all systray icons
 use_SyDesktop_Service   equ 1   ;[REQUIRED FOR THE FOLLOWING FUNCTIONS]
 use_SyDesktop_MODGET    equ 0   ;Returns the current screen mode
 use_SyDesktop_MODSET    equ 0   ;Sets the current screen 

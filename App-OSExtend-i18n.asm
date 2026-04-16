@@ -72,7 +72,7 @@ prgmsgerra1   db 1:dw prgmsgerra1_eng
 prgmsgerra2   db 1:dw prgmsgerra2_eng
 prgmsgerra3   db 1:dw prgmsgerra3_eng
 
-;new widget
+;widget new dialogue
 wdgnewtit   db 1:dw wdgnewtit_eng
 wdgnewtxt1   db 1:dw wdgnewtxt1_eng
 wdgnewtxt2   db 1:dw wdgnewtxt2_eng
@@ -83,35 +83,10 @@ wdgnewtxt6   db 1:dw wdgnewtxt6_eng
 wdgnewtxt7   db 1:dw wdgnewtxt7_eng
 wdgnewtxt8   db 1:dw wdgnewtxt8_eng
 
-;folder
-folgentxt1   db 1:dw folgentxt1_eng
-folrentxt1   db 1:dw folrentxt1_eng
-follautxt2   db 1:dw follautxt2_eng
-foldistxt2   db 1:dw foldistxt2_eng
-
-;icons context menu
-ctxicntxt1   db 1:dw ctxicntxt1_eng
-ctxicntxt2   db 1:dw ctxicntxt2_eng
-ctxicntxt3   db 1:dw ctxicntxt3_eng
-ctxicntxt4   db 1:dw ctxicntxt4_eng
-ctxicntxt5   db 1:dw ctxicntxt5_eng
-ctxicntxt6   db 1:dw ctxicntxt6_eng
-
-;desktop context menu
-ctxdsktxt1   db 1:dw ctxdsktxt1_eng
-ctxdsktxt2   db 1:dw ctxdsktxt2_eng
-ctxdsktxt3   db 1:dw ctxdsktxt3_eng
-ctxdsktxt4   db 1:dw ctxdsktxt4_eng
-ctxdsktxt5   db 1:dw ctxdsktxt5_eng
-ctxdsktxt7   db 1:dw ctxdsktxt7_eng
-ctxdsktxt8   db 1:dw ctxdsktxt8_eng
-ctxdsktxt9   db 1:dw ctxdsktxt9_eng
-ctxdsktxta   db 1:dw ctxdsktxta_eng
-ctxdsktxtb   db 1:dw ctxdsktxtb_eng
-ctxdsktxtc   db 1:dw ctxdsktxtc_eng
-ctxdsktxtd   db 1:dw ctxdsktxtd_eng
-ctxdsktxte   db 1:dw ctxdsktxte_eng
-ctxdsktxtf   db 1:dw ctxdsktxtf_eng
+;widget context menu
+ctxwdgtxt1   db 1:dw ctxwdgtxt1_eng
+ctxwdgtxt2   db 1:dw ctxwdgtxt2_eng
+ctxwdgtxt3   db 1:dw ctxwdgtxt3_eng
 
 ;icon new dialogue
 dicnewtit   db 1:dw dicnewtit_eng
@@ -149,10 +124,35 @@ dicprptxtm   db 1:dw dicprptxtm_eng
 dicprptxtn   db 1:dw dicprptxtn_eng
 dicprptxte   db 1:dw dicprptxte_eng
 
-;widget context menu
-ctxwdgtxt1   db 1:dw ctxwdgtxt1_eng
-ctxwdgtxt2   db 1:dw ctxwdgtxt2_eng
-ctxwdgtxt3   db 1:dw ctxwdgtxt3_eng
+;icons context menu
+ctxicntxt1   db 1:dw ctxicntxt1_eng
+ctxicntxt2   db 1:dw ctxicntxt2_eng
+ctxicntxt3   db 1:dw ctxicntxt3_eng
+ctxicntxt4   db 1:dw ctxicntxt4_eng
+ctxicntxt5   db 1:dw ctxicntxt5_eng
+ctxicntxt6   db 1:dw ctxicntxt6_eng
+
+;folder
+folgentxt1   db 1:dw folgentxt1_eng
+folrentxt1   db 1:dw folrentxt1_eng
+follautxt2   db 1:dw follautxt2_eng
+foldistxt2   db 1:dw foldistxt2_eng
+
+;desktop context menu
+ctxdsktxt1   db 1:dw ctxdsktxt1_eng
+ctxdsktxt2   db 1:dw ctxdsktxt2_eng
+ctxdsktxt3   db 1:dw ctxdsktxt3_eng
+ctxdsktxt4   db 1:dw ctxdsktxt4_eng
+ctxdsktxt5   db 1:dw ctxdsktxt5_eng
+ctxdsktxt7   db 1:dw ctxdsktxt7_eng
+ctxdsktxt8   db 1:dw ctxdsktxt8_eng
+ctxdsktxt9   db 1:dw ctxdsktxt9_eng
+ctxdsktxta   db 1:dw ctxdsktxta_eng
+ctxdsktxtb   db 1:dw ctxdsktxtb_eng
+ctxdsktxtc   db 1:dw ctxdsktxtc_eng
+ctxdsktxtd   db 1:dw ctxdsktxtd_eng
+ctxdsktxte   db 1:dw ctxdsktxte_eng
+ctxdsktxtf   db 1:dw ctxdsktxtf_eng
 
 ;startmenu
 stmtoptxt1   db 1:dw stmtoptxt1_eng
@@ -239,7 +239,7 @@ prgmsgerra1_eng db "The entered passwords do not",0
 prgmsgerra2_eng db "match. Please confirm your",0
 prgmsgerra3_eng db "new password.",0
 
-;new widget
+;widget new dialogue
 wdgnewtit_eng   db "Create Widget",0
 wdgnewtxt1_eng  db "Type the location and name of",0
 wdgnewtxt2_eng  db "the widget you want to add to",0
@@ -250,35 +250,10 @@ wdgnewtxt6_eng  db "Choose a size for the widget.",0
 wdgnewtxt7_eng  db "The following size(s) are",0
 wdgnewtxt8_eng  db "available:",0
 
-;folder
-folgentxt1_eng  db "Can't generate folder:",0
-folrentxt1_eng  db "Can't rename folder:",0
-follautxt2_eng  db "No launcher found",0
-foldistxt2_eng  db "Disc error",0
-
-;icons context menu
-ctxicntxt1_eng  db "Open",0
-ctxicntxt2_eng  db "Cut",0
-ctxicntxt3_eng  db "Copy",0
-ctxicntxt4_eng  db "Create Shortcut",0
-ctxicntxt5_eng  db "Delete",0
-ctxicntxt6_eng  db "Rename",0
-
-;desktop context menu
-ctxdsktxt1_eng  db "Arrange Icons",0
-ctxdsktxt2_eng  db "Line Up Icons",0
-ctxdsktxt3_eng  db "Refresh",0
-ctxdsktxt4_eng  db "Paste",0
-ctxdsktxt5_eng  db "New",0
-ctxdsktxt7_eng  db "Shortcut",0
-ctxdsktxt8_eng  db "8 x 8 grid",0
-ctxdsktxt9_eng  db "13 x 11 grid",0
-ctxdsktxta_eng  db "26 x 22 grid",0
-ctxdsktxtb_eng  db "48 x 40 grid",0
-ctxdsktxtc_eng  db "52 x 44 grid",0
-ctxdsktxtd_eng  db "Auto arrange",0
-ctxdsktxte_eng  db "Widget",0
-ctxdsktxtf_eng  db "Folder",0
+;widget context menu
+ctxwdgtxt1_eng  db "Move",0
+ctxwdgtxt2_eng  db "Resize",0
+ctxwdgtxt3_eng  db "Delete",0
 
 ;icon new dialogue
 dicnewtit_eng   db "Create Shortcut",0
@@ -316,17 +291,42 @@ dicprptxtm_eng  db "Browse target...",0
 dicprptxtn_eng  db "Change icon...",0
 dicprptxte_eng  db "EXE-file",0
 
-;widget context menu
-ctxwdgtxt1_eng  db "Move",0
-ctxwdgtxt2_eng  db "Resize",0
-ctxwdgtxt3_eng  db "Delete",0
+;icons context menu
+ctxicntxt1_eng  db "Open",0
+ctxicntxt2_eng  db "Cut",0
+ctxicntxt3_eng  db "Copy",0
+ctxicntxt4_eng  db "Create Shortcut",0
+ctxicntxt5_eng  db "Delete",0
+ctxicntxt6_eng  db "Rename",0
+
+;folder
+folgentxt1_eng  db "Can't generate folder:",0
+folrentxt1_eng  db "Can't rename folder:",0
+follautxt2_eng  db "No launcher found",0
+foldistxt2_eng  db "Disc error",0
+
+;desktop context menu
+ctxdsktxt1_eng  db "Arrange Icons",0
+ctxdsktxt2_eng  db "Line Up Icons",0
+ctxdsktxt3_eng  db "Refresh",0
+ctxdsktxt4_eng  db "Paste",0
+ctxdsktxt5_eng  db "New",0
+ctxdsktxt7_eng  db "Shortcut",0
+ctxdsktxt8_eng  db "8 x 8 grid",0
+ctxdsktxt9_eng  db "13 x 11 grid",0
+ctxdsktxta_eng  db "26 x 22 grid",0
+ctxdsktxtb_eng  db "48 x 40 grid",0
+ctxdsktxtc_eng  db "52 x 44 grid",0
+ctxdsktxtd_eng  db "Auto arrange",0
+ctxdsktxte_eng  db "Widget",0
+ctxdsktxtf_eng  db "Folder",0
 
 ;startmenu
 stmtoptxt1_eng  db "Favourites",0
 stmtoptxt2_eng  db "Programs",0
 stmtoptxt3_eng  db "Documents",0
 stmtoptxt4_eng  db "Settings",0
-stmtoptxt5_eng  db "Help",0
+stmtoptxt5_eng  db "Info",0
 stmtoptxt6_eng  db "Run...",0
 stmtoptxt7_eng  db "Security",0
 stmtoptxt8_eng  db "Shut down...",0
@@ -341,4 +341,4 @@ stmtoptxtf_eng  db "Save",0
 keytxtinf2_eng  db "Layouts:",0
 
 ;### RESERVE
-ds 130
+ds 170

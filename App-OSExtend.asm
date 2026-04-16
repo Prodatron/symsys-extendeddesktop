@@ -2,16 +2,15 @@
 ;@                                                                            @
 ;@               S y m b O S   S y s t e m   E x t e n s i o n                @
 ;@                                                                            @
-;@             (c) 2005-2025 by Prodatron / SymbiosiS (Jörn Mika)             @
+;@             (c) 2005-2026 by Prodatron / SymbiosiS (Jörn Mika)             @
 ;@                                                                            @
 ;@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
+
+;translate
 ;- foldatnam "new","folder"
 ;- dictxt0/dictxt1
-;- cfgsmif "Favourites" (-> startmenu editor only??)
-;- keymentxt1_eng  db " Keyboard settings...",0
-;- keytxtinf2_eng  db "Layouts
-;- keytxtinf7_eng  db "00 deadkey(s)",0
+;- startmenu editor -> "Favourites" (?)
 
 
 ;todo
@@ -30,14 +29,17 @@
 
 ;--- PROGRAM ------------------------------------------------------------------
 ;### PRGPRZ -> Application process
-;### PRGINI -> init advanced desktop
 ;### PRGERR -> Error-Fenster anzeigen
+;### PRGTRY -> tray icon clicked
+;### PRGINI
 
 ;--- CONFIG-ROUTINES ----------------------------------------------------------
 ;### CFGPTH -> Generates config path
 ;### CFGSAV -> save config data
 ;### CFGLOD -> load config data
 ;### CFGIMP -> imports icons and startmenu entries from the classic configuration
+;### CFGLNG -> translate startmenu with current language
+;### CFGSMI -> adds startmenu icons to top- and controlpanel-menu if not existing, or relocates existing ones
 ;### PRGPAR -> Startpfad auswerten
 
 ;--- SUB-ROUTINES -------------------------------------------------------------
@@ -55,35 +57,36 @@
 ;### CLCLCS -> Wandelt Groß- in Kleinbuchstaben um
 ;### STRINP -> Initialisiert Textinput (abhängig vom String, den es bearbeitet)
 ;### STRLEN -> Ermittelt Länge eines Strings
+;### STRCMP -> compares two string (case-sensitive)
 ;### STRSKP -> skips text string (behind 0-terminator)
-;### SYSCHK -> get computer type and adjust logo
+;### STRCOP -> copies string until 0-terminator
+;### SYSCHK -> get computer type and adjust logo, ini-filename
 ;### SYSOPN -> Lock desktop and open window
 ;### SYSCLO -> Close window and unlock desktop
 ;### SELOPN -> starts a "file selection" session
 ;### MEMCHK -> checks, if enough memory available
+;### BNKDST -> get our bank as destination
 
 ;--- EXTENDED STARTMENU -------------------------------------------------------
-;### MENCLK -> ...
 
 ;--- EXTENDED DESKTOP ---------------------------------------------------------
-;### DSKCLK -> ...
-;### DSKREF -> ...
-;### DSKPRP -> ...
-;### DSKBGR -> ...
 
 ;--- ICON GUI ROUTINES --------------------------------------------------------
 ;### DICDEL -> icon delete
 ;### DICCUT -> Cuts desktop icon
 ;### DICCOP -> Copies desktop icon
 ;### DICREN -> Renames desktop icon
-;### DICNEW -> New shortcut
+;### DICFOL -> check, if icon is a folder
+;### DICPOS -> corrects mouse position for new icon
+;### DICNEW -> New shortcut dialogue
+;### DICMAK -> creates a new icon
 ;### DICPRP -> Show and edit icon properties
 ;### DICSHC -> Create shortcut
 ;### DICPST -> Paste icon
 ;### DICLUP -> line up icons
 ;### DICARR -> arrange icons
-;### DICINH -> Inits icon header
 ;### DICINF -> get file infos
+;### DICINH -> inits icon header
 
 ;--- FOLDER ROUTINES ----------------------------------------------------------
 ;### FOLPTH -> init folder/launcher path
@@ -92,12 +95,22 @@
 ;### FOLGEN -> creates new folder file
 ;### FOLNEW -> create new folder
 ;### FOLREN -> renames folder file
+;### FOLPST -> duplicates folder file
 
 ;--- LINE UP ROUTINES ---------------------------------------------------------
 ;### LUPCOL -> collision detection
 ;### LUPALN -> align position
 ;### LUPFRE -> find free icon position
 ;### LUPALL -> line up all icons
+
+;--- TASK SWITCH ROUTINES -----------------------------------------------------
+;### TSKPRE -> prepares task switcher data and window
+;### TSKICN -> find icon of process
+;### TSKTIT -> get titel from current selected window
+;### TSKPOS -> update selector positions
+;### TSKNXT -> starts task switcher with next window
+;### TSKPRV -> starts task switcher with previous window
+;### TSKSWT -> opens task switcher window
 
 ;--- SYSTEM EXTENSIONS ROUTINES -----------------------------------------------
 ;### SYSSEC -> Dialog für System-Sicherheit öffnen
@@ -117,11 +130,13 @@
 ;--- ICON MANAGEMENT ROUTINES -------------------------------------------------
 ;### ICNADR -> returns data addresse of an icon
 ;### ICNINI -> inits icons (init window controls, set colours and transfer data pointers to data area)
+;### ICNPOS -> udates positions of icon data from actual desktop data
 ;### ICNRSZ -> resizes icon data
 ;### ICNDEL -> deletes icon
 ;### ICNCOP -> copies icon into the clipboard
 ;### ICNNEW -> reserves memory for new icon
 ;### ICNFIL -> gets icon from file
+;### ICNCPR -> check, if inside area or skip compressed/uncompressed area
 ;### ICNLOD -> loads icon from ICN-file
 
 ;--- WIDGET ROUTINES ----------------------------------------------------------
@@ -138,6 +153,75 @@
 ;### WDGPRP -> open widgets property dialogue
 ;### WDGRSZ -> resizes a widget
 
+;--- CONTROL PANEL COMMUNICATION ----------------------------------------------
+;### CPLOPR -> execute control panel operations
+;### CPLRPL -> replys to control panel/appication and returns to main loop
+
+;--- FONT ROUTINES ------------------------------------------------------------
+;### FNTINI -> init font handling
+;### FNTACT -> activate enhance font
+;### FNTCFL -> check, if enhanced font is existing, load it and set OS font (called by cfglod)
+;### FNTCFS -> save enhanced font in config, if existing (called by cfgsav)
+;### FNTMEM -> reserves and registers memory for enhanced font
+;### FNTERR -> error while loading font, release memory optional and send CP message
+;### FNTLOD -> load enhanced font from file and activate it, send CP confirmation
+;### FNTREM -> remove enhanced font, if existing, send CP confirmation
+
+;--- KEYFUNCTION ROUTINES -----------------------------------------------------
+;### KFNEXE -> executes keyboard input
+
+;--- KEYMAPPING ROUTINES ------------------------------------------------------
+;### KEYMEM -> releases or reserves and registers memory for enhanced keymaps and deadkey/romaji trees
+;### KEYCFS -> save enhanced keyboard configuration into INI file
+;### KEYCFL -> load enhanced keyboard configuration from KEX/INI file
+;### KEYACT -> activate or deactivate enhanced keymap settings
+;### KEYSTD -> remove systray icon
+;### KEYNXT -> switches to next keymap, if switchable keymaps active
+;### KEYSWT -> switches to selected keylayout
+;### KEYSWTx -> switch to keymap via systray menu
+;### KEYINF -> builds keyboard information
+;### KEYERR -> error while loading kex file
+;### KEYPRV -> shows kex preview
+;### KEYLOD -> loads and activates kex-file
+;### KEYDED -> converts deadkey+char into combined char
+;### KEYFTR -> use full tree for input conversion
+;### KEYTRE -> executes key tree
+
+;--- LANGUAGE ROUTINES --------------------------------------------------------
+;### PRGLNG -> patches language for Extended Desktop and SymbOS core
+;### LNGSET -> gets or sets primary and secondary language
+;### LNGLOD -> load from language file and patch application
+;### LNGISA -> copy language/keyboard IDs to Isetta, if existing
+
+;--- DATA AREA ----------------------------------------------------------------
+;### CONFIG AREA START ###
+
+;--- TRANSFER AREA ------------------------------------------------------------
+;### PRGPRZS -> Stack for application process
+
+;%%% MULTI LANGUAGE TEXTS %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+;### SYMBOS LOGO ##############################################################
+;### MISC #####################################################################
+;### KEYBOARD SYSTRAY MENU ####################################################
+;### KEYBOARD INFORMATION #####################################################
+;### SYMBOS SECURITY ##########################################################
+;### UNLOCK ###################################################################
+;### PASSWORD #################################################################
+;### TASK SWITCH ##############################################################
+;### WIDGET MANAGEMENT DIALOGUES ##############################################
+;### WIDGET NEW DIALOGUE ######################################################
+;### FOLDER MANAGEMENT MESSAGES ###############################################
+;### ICON MANAGEMENT DIALOGUES ################################################
+;### ICON NEW DIALOGUE ########################################################
+;### ICON PROPERTY DIALOGUE ###################################################
+;### WIDGET CONTEXT MENU ######################################################
+;### ICONS CONTEXT MENU #######################################################
+;### DESKTOP CONTEXT MENU #####################################################
+;### DESKTOP WINDOW ###########################################################
+;### STARTMENU ICONS ##########################################################
+;### STARTMENU ITEMS #########################################################
+
+;---
 
 
 ;==============================================================================
@@ -225,6 +309,8 @@ prgini1 call stmini0                ;*** PLACE EXTENDED STARTMENU
 
 prgini2 call dskbgr0                ;*** PLACE EXTENDED DESKTOP
         call msgsnd             ;send dummy confirmation (only for MSX ##!!## why?)
+prgini3 ld hl,SyDesktop_DSKALL  ;replaced with CALL, set extended font, if existing (see FNTCFL), because of MSX do this here (?)
+
         ld de,dskbgrwin
         ld a,(App_BnkNum)
         call SyDesktop_WINOPN   ;open extended desktop window
@@ -279,7 +365,7 @@ prgprz8 jp z,0
         ld a,(syssecf)          ;* close only, if security window is open
         or a
         jr z,prgprz0
-        jp secwin5
+        jp secwin3
 prgprz2 cp DSK_ACT_CONTENT      ;* content clicked
         jr nz,prgprz0
         ld hl,(App_MsgBuf+8)
@@ -346,17 +432,25 @@ prgtry  ld a,(App_MsgBuf+2)     ;0=left, 1=right, 2=left double click
         jr z,prgtrym            ;right -> menu
 prgtry1 call keynxt             ;left  -> next
         jp prgprz0
-prgtrym ld de,keymendat         ;** open context menu
+prgtrym ld hl,5*8+keymendat1        ;** open context menu
+        ld de,-8
+        ld b,5
+        ld a,(keydatlyp)
+        inc a
+prgtry2 add hl,de
+        res 1,(hl)
+        cp b
+        jr nz,prgtry3
+        set 1,(hl)              ;check selected
+prgtry3 djnz prgtry2
+        ld de,keymendat
         ld a,(App_BnkNum)
         ld hl,-1
-        call SyDesktop_MENCTX
+        call SyDesktop_MENCTX   ;open menu
         jp c,prgprz0
         ld a,l:or h
         jp z,prgprz0
         jp (hl)
-
-;### PRGINI
-prgini
 
 
 ;==============================================================================
@@ -444,7 +538,7 @@ cfglod1 ld hl,cfgdynbeg
         pop af
         call SyFile_FILCLO          ;close file
         jp cfgsmi
-cfglod0 ;call cfglod
+cfglod0 ;call cfglod                 ;##!!## doesn't work?? (load config again during runtime)
         jp prgprz0
 
 ;### CFGIMP -> imports icons and startmenu entries from the classic configuration
@@ -469,12 +563,7 @@ cfgimp  ld e,7                      ;*** get startmenu entries and icons
         push ix
         pop hl
         ld bc,lnklenall
-        rst #20:dw jmp_bnkcop
-        ld hl,jmp_sysinf        ;get numbers
-        ld de,256*36+5
-        ld ix,cfgicnnum
-        ld iy,66+2+6+5
-        rst #28
+        rst #20:dw jmp_bnkcop   ;(cfgicnnum,cfgmennum already got in syschk)
 
         ld hl,16383-lnklenall-1120  ;*** generate startmenu entries
         ld de,cfgdatbeg
@@ -741,13 +830,13 @@ cfglngc pop hl
         pop de
         ret
 
-cfglngf ld l,(ix+6)
+cfglngf ld l,(ix+6)         ;** translate only (zf=1), if icon=favourites
         ld h,(ix+7)
         ld bc,smifavgfx+1
         sbc hl,bc
         ld de,(stmtoptxt1+1)
         ret
-cfglngm ld hl,0
+cfglngm ld hl,0             ;** always translate, de=new name, zf=1
         ld e,(hl):inc hl
         ld d,(hl):inc hl
         ld (cfglngm+1),hl
@@ -761,7 +850,7 @@ cfglngm ld hl,0
 cfgsmii db 6,128,-1:dw 0:db " "
 cfgsmim dw smifldgfx+1, smiprggfx+1,smidocgfx+1,smicfggfx+1,smihlpgfx+1,smirungfx+1,smisecgfx+1,smioffgfx+1
 cfgsmic dw              smicfggfx+1,smidspgfx+1,smitimgfx+1,smimengfx+1,smilodgfx+1,smisavgfx+1
-cfgsmif db "Favourites",0
+cfgsmif db "Favourites",0   ;(only used to convert old 3.x data, no translation necessary)
 
 cfgsmi  ld a,(stamen01+3)
         cp 6
@@ -968,12 +1057,9 @@ msgget1 ld a,(App_PrcID)
 ;### MSGDSK -> wait for a message from the desktop manager
 ;### Ausgabe    (recmsgb)=Message, A=(recmsgb+0), IY=recmsgb
 ;### Veraendert 
-msgdsk  call msgget
+msgdsk  ld h,PRC_ID_DESKTOP
+        call msgget1
         jr nc,msgdsk            ;no Message
-        ld a,PRC_ID_DESKTOP
-        db #dd:cp h
-        jr nz,msgdsk            ;Message from someone else -> ignore
-        ld a,(App_MsgBuf)
         ret
 
 ;### MSGSND -> send message to desktop process
@@ -1239,7 +1325,7 @@ strskp  xor a
 
 ;### STRCOP -> copies string until 0-terminator
 ;### Input      HL=source, DE=destination
-;### Output     DE=behind 0-terminator, A=0
+;### Output     HL,DE=behind 0-terminator, A=0
 ;### Destroyed  F,BC,HL
 strcop  ld a,(hl)
         ldi
@@ -1248,10 +1334,10 @@ strcop  ld a,(hl)
         ret
 
 ;### SYSCHK -> get computer type and adjust logo, ini-filename
-syschk  ld hl,jmp_sysinf        ;*** get Computer Type and hardware config
-        ld de,256*1+5
+syschk  ld hl,jmp_sysinf        ;*** get Computer Type, hardware flags and icon configuration (for cfgimp)
+        ld de,256*38+5
         ld ix,cfghrdflg
-        ld iy,240-163 ;66+2+6+8
+        ld iy,240-163
         rst #28
         ld a,(cfghrdflg)
         bit 3,a
@@ -1373,6 +1459,8 @@ bnkdst  ld a,(App_BnkNum)
 ;### EXTENDED STARTMENU #######################################################
 ;==============================================================================
 
+;### MENCLK -> executes menu entry
+;### Input      DE=path
 menclk  ex de,hl
         ld a,h
         cp 4
@@ -1381,9 +1469,25 @@ menclk  ex de,hl
         ld b,h
         call msgsys
         jp prgprz0
+;hl=path
 menclk1 call menclk0
         jp prgprz0
-menclk0 ld a,(App_BnkNum)       ;##!!## pfad neu zusammensetzen (workdir, winmode)
+menclk0 push hl
+        call strlen
+        inc hl                  ;hl=start-in path
+        push hl
+        call strlen             ;c=path length
+        inc hl
+        ld a,(hl)
+        ld ixh,a                ;ixh=window mode
+        pop iy
+        inc c:dec c
+        ld ixl,0
+        jr z,menclk2
+        inc ixl                 ;ixl=flag, if start-in path
+menclk2 pop hl
+        ld a,(App_BnkNum)
+        set 4,a
         jp SySystem_PRGRUN
 
 
@@ -2309,6 +2413,26 @@ dicpbi1 ld hl,filselbuf+4
 dicpbi2 call dicinhb
         ld a,(dicprpw)
         ld e,5
+        call SyDesktop_WINDIN
+        jp prgprz0
+
+dicpbs  ld hl,dicprpbuf2            ;*** browse start-in
+        ld de,filselbuf+4
+        ld bc,128
+        ld a,c
+        ldir
+        ld hl,filmskall
+        ld de,dicprpwin
+        ld bc,dicpbs1
+        jp selopn
+dicpbs1 ld hl,filselbuf+4
+        ld de,dicprpbuf2
+        ld bc,127
+        ldir
+        ld ix,dicprpinp2
+        call strinp
+        ld a,(dicprpw)
+        ld e,13
         call SyDesktop_WINDIN
         jp prgprz0
 
@@ -3349,8 +3473,7 @@ tskicn6 ld hl,0
         ld bc,prgdatibg-prgdatflg-1
         jr z,tskicn8            ;no 16col icon available -> use 4col icon
         rst #20:dw jmp_bnkrwd
-        ld l,c
-        ld h,b
+        ld l,c:ld h,b
         ld c,10
         jr tskicn9
 tskicn7 ld bc,prgdatibg
@@ -3585,7 +3708,7 @@ syspwd1 ld hl,syspwda
         ret
 
 ;### SECWINx -> Aktionen im Security-Fenster ausführen
-secwin0 ld hl,sysspcw           ;*** Security -> Lock
+secwin1 ld hl,sysspcw           ;*** Security -> Lock
         call sysclo0
         ld hl,syspwda
         ld de,sysinplok1b
@@ -3597,23 +3720,24 @@ secwin0 ld hl,sysspcw           ;*** Security -> Lock
         ld bc,DSK_SRV_DSKPNT*256+2
         ld hl,syswinlok
         jp sysopn
-secwin1 call sysclo             ;*** Security -> TaskManager
-        ld c,MSC_SYS_PRGTSK
-        call msgsys
-        jp prgprz0
-secwin2 call sysclo             ;*** Security -> Run
-        ld c,MSC_SYS_PRGSTA
-        call msgsys
-        jp prgprz0
-secwin3 call sysclo             ;*** Security -> Password
+secwin2 call sysclo             ;*** Security -> Password
         call syspwd
         jp prgprz0
-secwin4 call sysclo             ;*** Security -> ShutDown
-        ld c,MSC_SYS_SYSQIT
-        call msgsys
+secwin3 call sysclo             ;*** Security -> Cancel
         jp prgprz0
-secwin5 call sysclo             ;*** Security -> Cancel
+
+secwin4 ld c,MSC_SYS_PRGTSK     ;*** Security -> TaskManager
+        jr secwins
+secwin5 ld c,MSC_SYS_PRGSTA     ;*** Security -> Run
+        jr secwins
+secwin6 ld c,MSC_SYS_SYSQIT     ;*** Security -> ShutDown
+secwins push bc
+        call sysclo
+        rst #30
+        pop bc
+        call msgsys             ;send command to system manager
         jp prgprz0
+
 
 ;### PASWINx -> Aktionen im Passwort-Ändern Fenster ausführen
 paswina ld hl,sysinppwd2b       ;*** Passwort -> Ok
@@ -3705,7 +3829,7 @@ lokwin  ld hl,sysinplok1b       ;*** Lock -> OK
         ld hl,sysinplok2b
         ld de,syspwdb
         call paswin6
-        jp z,secwin5
+        jp z,secwin3
 lokwin2 call lokwin1
         ld e,7                  ;Control aktualisieren
         ld a,(sysspcw)
@@ -4992,12 +5116,12 @@ wdgrsz  ld a,(wdgcurid)
 
 ;### CPLOPR -> execute control panel operations
 ;### Input      IXH=sender process (control panel or application for language services)
-;###            E=type [1=font preview, 2=font load, 3=font remove, 4=language setting, 5=build kex-info, 6=kex-preview, 7=load kex], D=data bank/flags, HL=data address/data
+;###            E=type [1=*undef*, 2=font load, 3=font remove, 4=language setting, 5=build kex-info, 6=kex-preview, 7=load kex], D=data bank/flags, HL=data address/data
 ;### Redirects  D,HL
 cplopr  ld a,ixh
         ld (cplrpl0+2),a
         dec e
-        jp z,fntprv
+        ;jp z,...
         dec e
         jp z,fntlod
         dec e
@@ -5064,7 +5188,12 @@ fntact1 rst #20:dw jmp_bnkwwd
 
 ;### FNTCFL -> check, if enhanced font is existing, load it and set OS font (called by cfglod)
 ;### Input      B=file handle
-fntcfl  ld a,(cfgdatflg)
+fntcfl  call fntcfl0
+        ld a,#c3
+        ld (fntcfl3),a
+        ret
+
+fntcfl0 ld a,(cfgdatflg)
         bit 1,a
         ret z
         push bc
@@ -5084,7 +5213,10 @@ fntcfl2 ld a,(5*0+prgmemtab+0)
         jr c,fntcfl1
         call fntact
         rst #30
-        jp SyDesktop_DSKALL
+fntcfl3 ld hl,SyDesktop_DSKALL       ;##!!## workaround, as this doesn't work directly on MSX while booting (DSKSRVA is not executed)
+        ld a,#cd
+        ld (prgini3),a
+        ret
 
 ;### FNTCFS -> save enhanced font in config, if existing (called by cfgsav)
 ;### Input      B=file handle
@@ -5186,62 +5318,6 @@ fntmem2 ld (hl),e:inc hl
         dec ixl
         jr nz,fntmem2
         ret
-
-;### FNTPRV -> copy enhanced big font to control panel preview font, send CP confirmation
-;### Input      HL=font address behind header, D=font bank
-fntprv  ld a,d
-        add a:add a:add a:add a     ;aHi=prv bank
-        ex de,hl                    ;de =prv adr
-        ld hl,App_BnkNum
-        add (hl)                    ;aLo=app bank
-        ld (fntprv3+1),a
-        ld a,(hl)
-        add a:add a:add a:add a     ;aHi=app bank
-        ld hl,5*0+prgmemtab+0
-        add (hl)                    ;aLo=fnt bank
-        ld (fntprv1+1),a
-        ld hl,(5*0+prgmemtab+1)
-        ld bc,31*11+512
-        add hl,bc
-        ld b,6
-fntprv1 ld a,0
-        push bc
-        ld bc,11*16
-        push bc
-        push hl
-        push de
-        ld de,fntcnv
-        push de
-        rst #20:dw jmp_bnkcop       ;copy 16 big chars from enhanced font to converter buffer
-        pop de
-        push de
-        ld l,e:ld h,d
-        ld a,16                     ;convert 16 chars from big to small
-fntprv2 ldi                         ;total length
-        inc hl                      ;skip column length
-        ld bc,8                     ;copy 8 lines
-        ldir
-        inc hl                      ;skip next column length (=0)
-        dec a
-        jr nz,fntprv2
-        pop hl
-        pop de
-fntprv3 ld a,0
-        ld bc,9*16
-        push de
-        push bc
-        rst #20:dw jmp_bnkcop       ;copy converted chars to preview font
-        pop bc
-        pop hl
-        add hl,bc
-        ex de,hl
-        pop hl
-        pop bc
-        add hl,bc
-        pop bc
-        djnz fntprv1
-        ld a,1
-        jp cplrpl
 
 ;### FNTERR -> error while loading font, release memory optional and send CP message
 fnterr2 pop hl
@@ -5514,6 +5590,7 @@ keycfl1 push bc
 ;### KEYACT -> activate or deactivate enhanced keymap settings
 ;### Destroyed  BC,DE,HL,IX,IY
 keyact  push af
+        call lngisa
         ld hl,(dskvaradr)
         ld bc,symextkmf
         add hl,bc
@@ -5596,12 +5673,25 @@ keynxt  ld a,(cfgkeyflg)
         inc (hl)
         ld a,(cfgkeylyc)
         cp (hl)
-        jr nz,keyswt
+        jr nz,keynxt1
         ld (hl),0
+keynxt1 call keyswt0
+        call z,SyDesktop_STIUPD
+        ret
+
 ;### KEYSWT -> switches to selected keylayout
 ;### Input      (keydatlyp)=layout
 keyswt  call keystd
-        ld a,(keydatlyp)
+        call keyswt0
+        ret nz
+        ld a,(App_BnkNum)
+        ld l,1
+        call SyDesktop_STIADD
+        ret c
+        ld (keydatsti),a
+        ret
+;ZF=1 -> show systray icon, ZF=0 -> DE=keysti_icn
+keyswt0 ld a,(keydatlyp)
         ld de,keylaysiz
         call clcm16
         ld bc,(5*1+prgmemtab+1)
@@ -5660,7 +5750,6 @@ keyswt2 pop af
         add hl,de
         xor a
         rst #20:dw jmp_bnkwbt       ;reset/set fulltree flag
-
         pop hl                      ;hl=layout name adr
         ld a,(cfgkeyflg)
         cpl
@@ -5675,21 +5764,17 @@ keyswt2 pop af
         ld a,2
         ld de,keysti_icn
         ld (de),a
-        ld a,(App_BnkNum)
-        ld l,1
-        call SyDesktop_STIADD
-        ret c
-        ld (keydatsti),a
+        xor a
         ret
 
 ;### KEYSWTx -> switch to keymap via systray menu
-keyswta xor a :jr keyswt0
-keyswtb ld a,1:jr keyswt0
-keyswtc ld a,2:jr keyswt0
-keyswtd ld a,3:jr keyswt0
+keyswta xor a :jr keyswtm
+keyswtb ld a,1:jr keyswtm
+keyswtc ld a,2:jr keyswtm
+keyswtd ld a,3:jr keyswtm
 keyswte ld a,4
-keyswt0 ld (keydatlyp),a
-        call keyswt
+keyswtm ld (keydatlyp),a
+        call keynxt1
         jp prgprz0
 
 ;### KEYINF -> builds keyboard information
@@ -5703,9 +5788,10 @@ keyinf  ld a,(App_BnkNum)
         ld bc,keyobjinf
         rst #20:dw jmp_bnkwwd
 
-        ld a,(cfgkeylyc)
-        or a
+        ld a,(cfgkeyflg)
+        and 1
         jr z,keyinf5
+        ld a,(cfgkeylyc)
         ld b,a
         ld a,(keydatbnc)
         ld hl,(5*1+prgmemtab+1)
@@ -5743,15 +5829,12 @@ keyinf0 ld a,(hl)
         ld bc,cfgkeynam-cfgkeyflg-8 ;copy description
         add hl,bc
         ld de,keytxtinf1
-        ld c,3
+        ld c,8
         ldir
-        inc de:inc de
-        ld c,5
-        ldir
-        inc de:inc de:inc de:inc de
+        inc de:inc de:inc de
         ld c,15
         ldir
-        ld bc,cfgkeylyc-cfgkeynam-3-5-15
+        ld bc,cfgkeylyc-cfgkeynam-8-15
         add hl,bc
         ld a,(hl)
         ld ix,keydatinf1
@@ -5895,18 +5978,31 @@ keyded  call keytre2
         ld e,d
         call keytre
         pop de
+        call keytre
+        ld e,a
+        jr nc,keyftr1
+        ld a,(App_MsgBuf+6)
+        cp 32
+        jr nc,keyftr1
+        ld e,a
+        ld d,a
+        jr keyded
+
 ;### KEYFTR -> use full tree for input conversion
 ;### Input      E=next input char
 ;### Returns    P2=0/len, P6-P12=result string
 keyftr  call keytre
         ld e,a
-        ld bc,FNC_DXT_KEYFTR*256+MSR_DSK_EXTDSK
+keyftr1 ld bc,FNC_DXT_KEYFTR*256+MSR_DSK_EXTDSK
         call msgsnd
         jp prgprz0
 
 ;### KEYTRE -> executes key tree
 ;### Input      E=input char
-;### Output     A=0/result length, (App_MsgBuf+6)=result string
+;### Output     A>0 -> A=result length, (App_MsgBuf+6)=result string
+;###                   CF=0 -> result found in tree
+;###                   CF=1 -> not found, result is last char
+;###            A=0 -> tree in progress, not finished (CF always 0)
 keytreadr   dw 0    ;tree start address
 keytreofs   dw 0    ;current address in tree
 
@@ -5924,6 +6020,7 @@ keytre1 ld a,(5*1+prgmemtab+0)
         jr nz,keytre1
         ld (App_MsgBuf+6),a         ;not found -> just return last char
         ld a,1
+        scf
 keytre2 ld hl,(keytreadr)
 keytre3 ld (keytreofs),hl
         ret
@@ -5944,6 +6041,7 @@ keytre5 ld de,App_MsgBuf+6          ;yes -> copy leaf-content to result
         pop hl
         call strlen
         ld a,c
+        or a
         jr keytre2
 
 
@@ -5971,6 +6069,7 @@ prglng  ld hl,(App_BnkNum)
         push de
         push hl
         call lnglody
+
         ld hl,(dskvaradr)
         xor a
         rst #20:dw jmp_bnkrbt
@@ -5998,6 +6097,7 @@ lngset  dec d
         jr nz,lngset2
         ld (cfglngpri),hl
         ;call prglng
+        ;call cfglng
 lngset1 ld a,4
         jp cplrpl
 lngset2 ld hl,(cfglngpri)
@@ -6151,6 +6251,26 @@ lnglodl ld hl,fntcnv                ;** load from file
         pop hl
         ret
 
+;### LNGISA -> copy language/keyboard IDs to Isetta, if existing
+lngisa  ld a,(cfghrdtyp)
+        and 63
+        cp 19
+        ret nz
+        ld hl,#4f0
+        ld a,(cfglngpri)
+        out (#f1),a
+        ld b,6
+        ld de,cfgkeynam
+        ld a,(cfgkeyflg)
+        or a
+        jr z,lngisa2
+lngisa1 ld a,(de)
+lngisa2 inc hl
+        out (#f1),a
+        inc de
+        djnz lngisa1
+        ret
+
 
 ;==============================================================================
 ;### DATA AREA ################################################################
@@ -6178,7 +6298,7 @@ cfgkeytrc   db 0    ;total number of keyboard trees (length table at the beginni
 cfgkeyfnt   db 0    ;required writing style (="codepage"/font)
 cfgkeylng   db 0    ;prefered language (JPN)
 cfgkeyres   ds 13   ;*res*
-cfgkeynam   ds 24   ;name
+cfgkeynam   ds 24   ;name (3chars language identifier, 5chars subspec, 16chars full name)
 
             ds 256-$+cfgdatbeg-2
 
@@ -6269,7 +6389,7 @@ syspwdc db 0        ;flags (encryption type, screen saver, lock after booting)
 ;==============================================================================
 
 texts_int
-read"App-OSExtend-Texts.asm"
+read"App-OSExtend-i18n.asm"
 texts_int_end
 
 list
@@ -6298,7 +6418,7 @@ db #0f,#0f,#0f,#0f,#1e,#f0,#f0,#f0,#c3,#0f,#0f,#f8,#e1,#0f,#3c,#f0,#f0,#c3,#0f,#
 
 ;### MISC #####################################################################
 
-
+prgtxtbrw   db "...",0
 stmsetlnk2  db "%cpdisply.exe",0
 
 icndummy
@@ -6306,8 +6426,6 @@ db 6,24,24
 db #30,#F0,#F0,#F0,#80,#00,#20,#00,#00,#00,#C0,#00,#20,#00,#00,#00,#A0,#00,#20,#00,#00,#00,#90,#00,#20,#00,#00,#00,#F0,#80,#20,#00,#00,#00,#77,#80,#20,#00,#00,#00,#00,#C4,#20,#F3,#FF,#DF,#6C,#C4
 db #20,#F7,#FF,#FF,#EC,#C4,#20,#80,#00,#00,#20,#C4,#20,#91,#11,#11,#20,#C4,#20,#B3,#AB,#AB,#A8,#C4,#20,#A3,#AB,#BB,#A8,#C4,#20,#91,#11,#11,#20,#C4,#20,#80,#00,#00,#20,#C4,#20,#B1,#B2,#B0,#A8,#C4
 db #20,#80,#00,#00,#20,#C4,#20,#F0,#F0,#F0,#E0,#C4,#20,#00,#00,#00,#00,#C4,#20,#00,#00,#00,#00,#C4,#20,#00,#00,#00,#00,#C4,#20,#00,#00,#00,#00,#C4,#30,#F0,#F0,#F0,#F0,#C4,#11,#FF,#FF,#FF,#FF,#CC
-
-cfghrdflg   db 0    ;Hardware -> [b0]=Proportional Mouse, [b1]=Real-Time Clock, [b2]=Mass Storage Device, [b3]=GFX9000, [b4]=longfilename support, [b5]=255 char support
 
 filmskall   db "*  "
 filmskicn   db "icn"
@@ -6317,9 +6435,12 @@ filselbuf   ds 4+256
 
 icninic     db 0        ;tempbuf for icontext colours
 
+cfghrdflg   db 0    ;Hardware -> [b0]=Proportional Mouse, [b1]=Real-Time Clock, [b2]=Mass Storage Device, [b3]=GFX9000, [b4]=longfilename support, [b5]=255 char support
+cfgdskvir   db 0    ;Virtual desktop (0=no virtual desktop, Bit[0-3] -> X-resolution, 1=512, 2=1000, Bit[4-7] -> Y-resolution, not yet defined)
 cfgicnnum   db 0    ;number of icons
 cfgmennum   db 0    ;number of startmenu entries
-            ds 2
+cfgcapflg   db 0    ;Capabilities -> [bit0]=long filename support, [bit1]=internal full charset system font (1-255), [bit5-6]=Backdrop size (0=320x200x4, 1=512x212x4/16)
+cfghrdtyp   db 0    ;bit[0-6] Computer type     0=464, 1=664, 2=6128, 3=464Plus, 4=6128Plus, ...
 cfgicnpos   ds 4*8  ;icon positions
 
 
@@ -6369,7 +6490,8 @@ keyobjinf5  dw keytxtinf5,0+4
 keyobjinf6  dw keytxtinf6,0+4
 keyobjinf7  dw keytxtinf7,0+4
 
-keytxtinf1  db "XXX (xxxxx) - ":ds 16
+keytxtinf1  db "XXXxxxxx - ":ds 16
+
 keytxtinf3  db "[1] ":ds 22
 keytxtinf4  db "[2] ":ds 22
 keytxtinf5  db "[3] ":ds 22
@@ -6388,12 +6510,12 @@ dw      00,255*256+1 ,systxtsec1,  5,69,155, 8,0         ;   Beschreibung 1
 dw      00,255*256+1 ,systxtsec2,  5,77,155, 8,0         ;   Beschreibung 2
 dw      00,255*256+1 ,systxtsec3, 20,36,144, 8,0         ;   Beschreibung 3
 dw      00,255*256+1 ,systxtsec4, 20,44,144, 8,0         ;   Beschreibung 4
-dw secwin0,255*256+16,sysbutsec1,  3,90, 55,12,0         ;07="Lock"-Button
-dw secwin2,255*256+16,sysbutsec3, 60,90, 55,12,0         ;08="Run"-Button
-dw secwin4,255*256+16,sysbutsec5,117,90, 56,12,0         ;09="Shut down"-Button
-dw secwin3,255*256+16,sysbutsec4,  3,104,55,12,0         ;10="Password"-Button
-dw secwin1,255*256+16,sysbutsec2, 60,104,55,12,0         ;11="Taskmgr"-Button
-dw secwin5,255*256+16,sysbutcnc ,117,104,56,12,0         ;12="Cancel"-Button
+dw secwin1,255*256+16,sysbutsec1,  3,90, 55,12,0         ;07="Lock"-Button
+dw secwin5,255*256+16,sysbutsec3, 60,90, 55,12,0         ;08="Run"-Button
+dw secwin6,255*256+16,sysbutsec5,117,90, 56,12,0         ;09="Shut down"-Button
+dw secwin2,255*256+16,sysbutsec4,  3,104,55,12,0         ;10="Password"-Button
+dw secwin4,255*256+16,sysbutsec2, 60,104,55,12,0         ;11="Taskmgr"-Button
+dw secwin3,255*256+16,sysbutcnc ,117,104,56,12,0         ;12="Cancel"-Button
 
 systxtsec1  dw systxtsec1t,4*1+2
 systxtsec2  dw systxtsec2t,4*1+2
@@ -6684,58 +6806,59 @@ dicnewbuf3  ds 12
 
 ;### ICON PROPERTY DIALOGUE ###################################################
 
-dicprpwin   dw #1401,4+16,079,011,160,142,0,0,160,142,160,142,160,142,0,systxtprp,0,0
+dicprpwin   dw #1401,4+16,075,011,168,142,0,0,168,142,168,142,168,142,0,systxtprp,0,0
 dicprpwin0  dw dicprpgrp1,0,0:ds 136+14
 
-dicprpgrp2  db 19,0:dw dicprpdat2,0,0,256*4+3,0,0,3
+dicprpgrp2  db 20,0:dw dicprpdat2,0,0,256*4+3,0,0,3
 dicprpdat2
 dw      00,         0,2,          0,0,1000,1000,0       ;00=Hintergrund
-dw dicprt, 255*256+20,dicprptab,   0,  1,160,11,0       ;01=Tab-Leiste
-dw dicpro, 255*256+16,sysbutok,   19,127, 44,12,0       ;02="Ok"    -Button
-dw dicprc, 255*256+16,sysbutcnc,  65,127, 44,12,0       ;03="Cancel"-Button
-dw dicpry, 255*256+16,sysbutapl, 111,127, 44,12,0       ;04="Apply" -Button
+dw dicprt, 255*256+20,dicprptab,   0,  1,168,11,0       ;01=Tab-Leiste
+dw dicpro, 255*256+16,sysbutok,   27,127, 44,12,0       ;02="Ok"    -Button
+dw dicprc, 255*256+16,sysbutcnc,  73,127, 44,12,0       ;03="Cancel"-Button
+dw dicpry, 255*256+16,sysbutapl, 119,127, 44,12,0       ;04="Apply" -Button
 dicprpdat2a
 dw      00,255*256+10,dicprpicn,  05, 15, 24,24,0       ;05=Icon "Icon"
 dw      00,255*256+32,dicprpinp3, 51, 14, 72,12,0       ;06=Name1 "Icon"
 dw      00,255*256+32,dicprpinp4, 51, 28, 72,12,0       ;07=Name2 "Icon"
-dw      00,         0,1,          05, 43,150, 1,0       ;08=Trennlinie
+dw      00,         0,1,          05, 43,158, 1,0       ;08=Trennlinie
 dw      00,255*256+ 1,dicprpdscb, 05, 47, 55, 8,0       ;09=Beschreibung "Target"
-dw      00,255*256+32,dicprpinp1, 05, 57,150,12,0       ;10=Eingabe "Target"
-dw      00,         0,1,          05, 73,150, 1,0       ;11=Trennlinie
+dw      00,255*256+32,dicprpinp1, 05, 57,158,12,0       ;10=Eingabe "Target"
+dw      00,         0,1,          05, 73,158, 1,0       ;11=Trennlinie
 dw      00,255*256+ 1,dicprpdscc, 05, 80, 46, 8,0       ;12=Beschreibung "Start in"
-dw      00,255*256+32,dicprpinp2, 51, 78,104,12,0       ;13=Eingabe "Start in"
-dw      00,255*256+ 1,dicprpdscd, 05, 93, 46, 8,0       ;14=Beschreibung "Run"
-dw      00,255*256+42,dicprprun,  51, 92,104,10,0       ;15=Auswahl "Run"
-dw dicpbt, 255*256+16,dicprptxtm, 09,106, 72,12,0       ;16="Browse target..."    -Button
-dw dicpbi, 255*256+16,dicprptxtn, 83,106, 72,12,0       ;17="Change icon..."-Button
-dw      00,         0,1,          05,122,150, 1,0       ;18=Trennlinie
+dw      00,255*256+32,dicprpinp2, 59, 78, 87,12,0       ;13=Eingabe "Start in"
+dw dicpbs, 255*256+16,prgtxtbrw, 148, 78, 15,12,0       ;14="Browse start-in..."  -Button
+dw      00,255*256+ 1,dicprpdscd, 05, 93, 46, 8,0       ;15=Beschreibung "Run"
+dw      00,255*256+42,dicprprun,  59, 92,104,10,0       ;16=Auswahl "Run"
+dw dicpbt, 255*256+16,dicprptxtm, 05,106, 76,12,0       ;17="Browse target..."    -Button
+dw dicpbi, 255*256+16,dicprptxtn, 83,106, 80,12,0       ;18="Change icon..."-Button
+dw      00,         0,1,          05,122,158, 1,0       ;19=Trennlinie
 
 dicprpgrp1  db 23,0:dw dicprpdat1,0,0,256*4+3,0,0,20
 dicprpdat1
 dw      00,         0,2,          0,0,1000,1000,0       ;00=Hintergrund
-dw dicprt, 255*256+20,dicprptab,   0,  1,160,11,0       ;01=Tab-Leiste
-dw dicpro, 255*256+16,sysbutok,   19,127, 44,12,0       ;02="Ok"    -Button
-dw dicprc, 255*256+16,sysbutcnc,  65,127, 44,12,0       ;03="Cancel"-Button
-dw dicpry, 255*256+16,sysbutapl, 111,127, 44,12,0       ;04="Apply" -Button
+dw dicprt, 255*256+20,dicprptab,   0,  1,168,11,0       ;01=Tab-Leiste
+dw dicpro, 255*256+16,sysbutok,   27,127, 44,12,0       ;02="Ok"    -Button
+dw dicprc, 255*256+16,sysbutcnc,  73,127, 44,12,0       ;03="Cancel"-Button
+dw dicpry, 255*256+16,sysbutapl, 119,127, 44,12,0       ;04="Apply" -Button
 dicprpdat1a
 dw      00,255*256+10,dicprpicn,  05, 15, 24,24,0       ;05=Icon "Icon"
-dw      00,255*256+ 1,dicprpdsc9, 51, 18,150, 8,0       ;06=Name1 "Icon"
-dw      00,255*256+ 1,dicprpdsca, 51, 28,150, 8,0       ;07=Name2 "Icon"
-dw      00,         0,1,          05, 43,150, 1,0       ;08=Trennlinie
+dw      00,255*256+ 1,dicprpdsc9, 59, 18,150, 8,0       ;06=Name1 "Icon"
+dw      00,255*256+ 1,dicprpdsca, 59, 28,150, 8,0       ;07=Name2 "Icon"
+dw      00,         0,1,          05, 43,158, 1,0       ;08=Trennlinie
 dw      00,255*256+ 1,dicprpdsc1, 05, 47, 55, 8,0       ;09=Beschreibung "File type"
-dw      00,255*256+ 1,dicprpcon1, 51, 47,104, 8,0       ;10=Angabe "File type"
+dw      00,255*256+ 1,dicprpcon1, 59, 47,104, 8,0       ;10=Angabe "File type"
 dw      00,255*256+ 1,dicprpdsc2, 05, 57, 55, 8,0       ;11=Beschreibung "Open with"
-dw      00,255*256+ 1,dicprpdsc8, 51, 57,104, 8,0       ;12=Beschreibung "not defined"
+dw      00,255*256+ 1,dicprpdsc8, 59, 57,104, 8,0       ;12=Beschreibung "not defined"
 dw      00,255*256+ 1,dicprpdsc3, 05, 67, 55, 8,0       ;13=Beschreibung "Location"
-dw      00,255*256+ 1,dicprpcon3, 51, 67,104, 8,0       ;14=Angabe "Location"
+dw      00,255*256+ 1,dicprpcon3, 59, 67,104, 8,0       ;14=Angabe "Location"
 dw      00,255*256+ 1,dicprpdsc4, 05, 77, 55, 8,0       ;15=Beschreibung "Size"
-dw      00,255*256+ 1,dicprpcon4, 51, 77,104, 8,0       ;16=Angabe "Size"
-dw      00,         0,1,          05, 88,150, 1,0       ;17=Trennlinie
+dw      00,255*256+ 1,dicprpcon4, 59, 77,104, 8,0       ;16=Angabe "Size"
+dw      00,         0,1,          05, 88,158, 1,0       ;17=Trennlinie
 dw      00,255*256+ 1,dicprpdsc0, 05, 92, 55, 8,0       ;18=Beschreibung "Name"
-dw      00,255*256+ 1,dicprpcon2, 51, 92,104, 8,0       ;19=Angabe "Name"
+dw      00,255*256+ 1,dicprpcon2, 59, 92,104, 8,0       ;19=Angabe "Name"
 dw      00,255*256+ 1,dicprpdsc5, 05,102, 55, 8,0       ;20=Beschreibung "Modified"
-dw      00,255*256+ 1,dicprpcon5, 51,102,104, 8,0       ;21=Angabe "Modified"
-dw      00,         0,1,          05,113,150, 1,0       ;22=Trennlinie
+dw      00,255*256+ 1,dicprpcon5, 59,102,104, 8,0       ;21=Angabe "Modified"
+dw      00,         0,1,          05,113,158, 1,0       ;22=Trennlinie
 
 dicprptab   db 2,2+4+48+64
 dicprptab0  db 0:dw dicprptxtj:db -1:dw dicprptxtk:db -1
@@ -6767,7 +6890,7 @@ dicprpinp4  dw dicprpbuf4,0,0,0,0,11,0      ;nameline2
 
 dicprprun   dw 4,0,dicprplst,0,1,dicprprow,0,1
 dicprprow   dw 0,1000,0,0
-dicprplst   dw 0,dicprptxtq, 0,dicprptxtr, 0,dicprptxts, 0,dicprptxtt
+dicprplst   dw 0,dicprptxtq, 0,dicprptxtr, 0,dicprptxtt, 0,dicprptxts
 
 dicprptxt8  ds 33
 
@@ -6894,6 +7017,6 @@ smimengfx   db 4,8,7:dw $+7,$+4,28:db 5: db #61,#66,#66,#66, #f1,#17,#ff,#7f, #7
 smilodgfx   db 4,8,7:dw $+7,$+4,28:db 5: db #61,#16,#66,#66, #10,#01,#16,#66, #10,#00,#77,#77, #10,#07,#22,#27, #10,#72,#22,#76, #17,#22,#27,#66, #77,#77,#76,#66
 smisavgfx   db 4,8,7:dw $+7,$+4,28:db 5: db #11,#11,#11,#11, #1f,#ee,#ee,#f1, #1f,#ee,#ee,#f1, #1f,#ff,#ff,#f1, #1f,#11,#c1,#f1, #1f,#11,#c1,#f1, #61,#11,#11,#11
 
-;### STARTMENU ITEMS #########################################################
+;### STARTMENU ITEMS ##########################################################
 
 stmrec  ds stmrecmax
